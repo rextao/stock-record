@@ -14,19 +14,23 @@
 		"publish": true
 	},
 	"dependencies": {
+		"antd-mobile": "^5.42.3",
+		"clsx": "^2.1.1",
 		"isbot": "5.1.32",
-		"react": "19.2.1",
-		"react-dom": "19.2.1",
-		"react-router": "7.9.6"
+		"lucide-react": "^1.33.0",
+		"react": "^19.2.8",
+		"react-dom": "^19.2.8",
+		"react-router": "7.9.6",
+		"tailwind-merge": "^3.6.0"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "1.15.3",
 		"@react-router/dev": "7.9.6",
-		"@tailwindcss/vite": "4.1.17",
 		"@types/node": "24.10.1",
-		"@types/react": "19.2.7",
-		"@types/react-dom": "19.2.3",
-		"tailwindcss": "4.1.17",
+		"@types/react": "^19.2.18",
+		"@types/react-dom": "^19.2.4",
+		"less": "^4.9.0",
+		"postcss-px-to-viewport-8-plugin": "^1.2.5",
 		"typescript": "5.9.3",
 		"vite": "^7.0.0",
 		"vite-tsconfig-paths": "5.1.4",

@@ -6,3 +6,4 @@ export default {
 		unstable_viteEnvironmentApi: true,
 	},
 } satisfies Config;
+
