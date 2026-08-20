@@ -46,5 +46,8 @@
 		"preview": "npm run build && vite preview",
 		"typecheck": "npm run typegen && tsc -b"
 	},
+	"engines": {
+		"node": ">=22.0.0"
+	},
 	"type": "module"
 }
