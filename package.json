@@ -47,7 +47,7 @@
 		"typecheck": "npm run typegen && tsc -b"
 	},
 	"engines": {
-		"node": ">=22.0.0"
+		"node": ">=24.18.0"
 	},
 	"type": "module"
 }
