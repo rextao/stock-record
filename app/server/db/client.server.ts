@@ -72,7 +72,99 @@ export class TradingDB {
         ];
         await this.db.batch(stmts);
     }
+    // ==========================================
+    // 获取所有交易（附带标的名称和卖出记录）- 用于图表统计
+    // ==========================================
+    async getAllTrades(): Promise<TradeWithItem[]> {
+        // 1. 联合查询获取所有 trades 及其对应的 item_name
+        const { results: tradesRows } = await this.db.prepare(`
+        SELECT t.*, i.name as item_name 
+        FROM trades t 
+        LEFT JOIN items i ON t.item_id = i.id 
+        ORDER BY t.buy_time DESC
+    `).all<Trade & { item_name: string }>();
 
+        // 2. 获取所有的卖出记录
+        const { results: allRecords } = await this.db.prepare(
+            'SELECT * FROM sell_records ORDER BY sell_time ASC'
+        ).all<SellRecord>();
+
+        // 3. 将卖出记录按 trade_id 分组进行内存聚合
+        const recordsMap = new Map<number, SellRecord[]>();
+        for (const r of allRecords) {
+            if (!recordsMap.has(r.trade_id)) {
+                recordsMap.set(r.trade_id, []);
+            }
+            recordsMap.get(r.trade_id)!.push(r);
+        }
+
+        // 4. 组装最终的数据结构
+        return tradesRows.map((t) => {
+            // 这里复用了类中已有的 enrichTrade 和 calcProfit 方法
+            const enriched = this.enrichTrade(t, t.item_name || '');
+            const recs = recordsMap.get(t.id) || [];
+
+            enriched.sell_records = recs;
+            if (recs.length > 0) {
+                enriched.total_profit = this.calcProfit(recs, t.current_price);
+            } else {
+                enriched.total_profit = 0;
+            }
+
+            return enriched;
+        });
+    }
+    // 按标的快捷卖出 (自动扣减未平仓记录)
+    async recordSellByItem(itemId: number, price: number, qty: number): Promise<void> {
+        if (!price || price <= 0) throw new Error('无效的卖出价格');
+        if (!qty || qty <= 0) throw new Error('无效的卖出数量');
+
+        // 1. 获取该标的下的所有未平仓交易 (按 buy_time DESC 排序，复刻你原有的逻辑)
+        const { results: openTrades } = await this.db
+            .prepare('SELECT * FROM trades WHERE item_id = ? AND sold_quantity < buy_quantity ORDER BY buy_time DESC')
+            .bind(itemId)
+            .all<Trade>();
+
+        // 2. 校验总仓位是否足够
+        const totalRemaining = openTrades.reduce((sum, t) => sum + (t.buy_quantity - t.sold_quantity), 0);
+        if (totalRemaining < qty) {
+            throw new Error(`卖出数量超过剩余持仓 ${totalRemaining}`);
+        }
+
+        let remaining = qty;
+        const now = this.nowLocalTime();
+
+        // 使用 any 绕过类型检查，或者如果你导出了 D1PreparedStatement 类型也可以加上
+        const stmts: any[] = [];
+
+        // 3. 循环扣减仓位并生成批处理 SQL
+        for (const t of openTrades) {
+            if (remaining <= 0) break;
+            const available = t.buy_quantity - t.sold_quantity;
+            const take = Math.min(available, remaining);
+
+            // 添加卖出记录
+            stmts.push(
+                this.db.prepare(
+                    `INSERT INTO sell_records (trade_id, sell_price, sell_quantity, sell_time) VALUES (?, ?, ?, ?)`
+                ).bind(t.id, price, take, now)
+            );
+
+            // 更新原交易的已售数量和实际价格
+            stmts.push(
+                this.db.prepare(
+                    `UPDATE trades SET actual_price = ?, sold_quantity = sold_quantity + ?, sell_time = ? WHERE id = ?`
+                ).bind(price, take, now, t.id)
+            );
+
+            remaining -= take;
+        }
+
+        // 4. 开启 D1 事务批量执行，保证数据强一致性
+        if (stmts.length > 0) {
+            await this.db.batch(stmts);
+        }
+    }
     // ============== 聚合查询 ==============
     async getOpenHoldings(): Promise<HoldingCard[]> {
         const { results: openTrades } = await this.db

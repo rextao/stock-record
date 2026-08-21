@@ -7,8 +7,14 @@ export default [
         route("profile", "routes/profile.tsx"),
     ]),
 
-    // --- 不带 TabBar 的独立二级页面 ---
     route("items/manage", "routes/items/manage.tsx"),
     route("items/new", "routes/items/new.tsx"),
+
+
+    route("trade/new", "routes/trade/new.tsx"),
+
+    // 新增：持仓详情与单笔交易详情
+    route("holdings/:id", "routes/holdings/detail.tsx"),
+    route("trade/:id", "routes/trade/detail.tsx"),
 
 ] satisfies RouteConfig;
