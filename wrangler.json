@@ -10,5 +10,12 @@
 	"upload_source_maps": true,
 	"vars": {
 		"VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare"
-	}
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "stock-storage",
+			"database_id": "31f66cce-ebe7-473b-9da0-343f81a9aec5"
+		}
+	]
 }

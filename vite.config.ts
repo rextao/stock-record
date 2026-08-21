@@ -13,7 +13,10 @@ export default defineConfig({
 		reactRouter(),
 		tsconfigPaths(),
 	],
-
+	ssr: {
+		// 强制 Vite 在 SSR 构建时处理该组件库，正确提取 CSS 并发送给客户端
+		noExternal: ['antd-mobile'],
+	},
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "./app"),
