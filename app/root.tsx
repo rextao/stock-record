@@ -42,7 +42,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 			{/* 沉浸式状态栏：让顶部的系统时间、信号栏融入深色背景 */}
 			<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 			{/* 保存在桌面时的 App 名称 */}
-			<meta name="apple-mobile-web-app-title" content="交易账本" />
+			<meta name="apple-mobile-web-app-title" content="啊呜啊呜" />
 			{/* 桌面图标 (需配合下一步放置图片文件) */}
 			<link rel="apple-touch-icon" href="/icon-192.png" />
 

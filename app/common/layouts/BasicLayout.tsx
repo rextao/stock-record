@@ -1,4 +1,4 @@
-import { TabBar } from 'antd-mobile'
+import { TabBar, SafeArea } from 'antd-mobile' // 👈 1. 引入 SafeArea
 import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from 'react-router'
 import { TAB_BAR_CONFIG, TAB_BAR_THEME } from './config/tabBarConfig'
@@ -7,63 +7,65 @@ export default function BasicLayout() {
     const navigate = useNavigate()
     const location = useLocation()
 
-    // 规范化 pathname
     const activeKey = location.pathname === '/' ? '/' : location.pathname.replace(/\/$/, '')
 
+    // 👈 2. 注入全局深色模式，让所有弹窗/菜单变成高级黑
+    useEffect(() => {
+        document.documentElement.setAttribute('data-prefers-color-scheme', 'dark');
+    }, []);
+
     return (
-        // 内容区域设为深色背景
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', backgroundColor: '#000000' }}>
-            {/* 页面主视口，支持独立滚动 */}
+        // 👈 3. 将 height: '100vh' 改为 '100dvh' (Dynamic Viewport Height，完美适配 iOS)
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', width: '100%', backgroundColor: '#000000' }}>
+
             <main style={{ flex: 1, overflowY: 'auto', color: '#fff' }}>
                 <Outlet />
             </main>
 
-            {/* 底部导航区域，适配 iPhone 底部安全区，并应用深色背景 */}
             <footer
                 style={{
-                    borderTop: '1px solid #1A1C24', // 顶部细线也改为深色
-                    backgroundColor: TAB_BAR_THEME.backgroundColor, // 使用配置的背景色
-                    paddingBottom: 'env(safe-area-inset-bottom)',
-                    zIndex: 100, // 确保在最上层
+                    borderTop: '1px solid #1A1C24',
+                    backgroundColor: TAB_BAR_THEME.backgroundColor,
+                    // 👈 4. 删掉原先手写的 paddingBottom，交由 SafeArea 处理
+                    zIndex: 100,
                 }}
             >
                 <TabBar
                     activeKey={activeKey}
                     onChange={(key) => navigate(key)}
-                    // 这里的 activeKey 用于渲染逻辑，但文字颜色在 Item 级别精细控制
                 >
                     {TAB_BAR_CONFIG.map((item) => {
                         const Icon = item.icon
-
                         return (
                             <TabBar.Item
                                 key={item.key}
                                 badge={item.badge}
                                 title={
-                                    // 在这里精细控制文字样式，确保未选中时也是深灰色
                                     (active) => (
                                         <span style={{
                                             color: active ? TAB_BAR_THEME.activeColor : TAB_BAR_THEME.inactiveColor,
-                                            fontSize: '11px', // 移动端文字通常较小
+                                            fontSize: '11px',
                                             marginTop: '3px',
                                             display: 'block'
                                         }}>
-                      {item.title}
-                    </span>
+                                            {item.title}
+                                        </span>
                                     )
                                 }
-                                // 使用标准方式处理图标，图标稍大一些 (22px) 以匹配图片
                                 icon={(active) => (
                                     <Icon
                                         size={22}
                                         color={active ? TAB_BAR_THEME.activeColor : TAB_BAR_THEME.inactiveColor}
-                                        strokeWidth={1.5} // 微调图标线条粗细
+                                        strokeWidth={1.5}
                                     />
                                 )}
                             />
                         )
                     })}
                 </TabBar>
+
+                {/* 👈 5. 在这里放置 SafeArea，它会自动垫高 iOS 底部的“小黑条”，并继承 footer 的背景色 */}
+                <SafeArea position="bottom" />
             </footer>
         </div>
     )
