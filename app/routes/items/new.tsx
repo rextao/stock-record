@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useFetcher, Form, redirect } from "react-router";
+import { useNavigate, useFetcher, Form, redirect, useActionData} from "react-router";
 import { NavBar, Button, List, Input, Toast } from "antd-mobile";
 import { Search } from "lucide-react";
-import { TradingDB } from "../../server/db/client.server";
+import { TradingDB } from "~/server/db/client.server";
+import { getStockProvider } from "~/server/services/stock";
 
 // ==========================================
-// 1. 服务端逻辑 (运行在 Cloudflare Worker)
+// 1. 服务端逻辑
 // ==========================================
-
-// Loader: 处理股票实时搜索
-export async function loader({ request }: { request: Request }) {
+export async function loader({ request, context }: { request: Request, context: any }) {
     const url = new URL(request.url);
     const q = url.searchParams.get("q");
 
@@ -17,28 +16,21 @@ export async function loader({ request }: { request: Request }) {
         return { results: [] };
     }
 
-    // 原代码中的 API Key，现在移到服务端更加安全
-    const apiKey = 'da2gbppr01qmq2q9sh7gda2gbppr01qmq2q9sh80';
+    // 通过服务工厂获取股票查询实现
+    const stockService = getStockProvider(context.cloudflare.env);
 
     try {
-        const response = await fetch(`https://finnhub.io/api/v1/search?q=${q}&exchange=US&token=${apiKey}`);
-        const data = await response.json() as any;
-
-        const results = (data.result || []).map((item: any) => ({
-            symbol: item.symbol || item.displaySymbol || '',
-            description: item.description || '',
-            exchange: item.exchange || 'US',
-            type: item.type || '',
-        })).filter((item: any) => item.symbol);
-
-        return { results: results.slice(0, 8) };
-    } catch (error) {
-        console.error("股票查询失败:", error);
-        return { results: [] };
+        const results = await stockService.search(q);
+        return { results };
+    } catch (error: any) {
+        // 捕获 API Key 缺失错误，通知前端
+        if (error.message === "MISSING_API_KEY") {
+            return { results: [], error: "未配置行情接口凭证，无法搜索股票" };
+        }
+        return { results: [], error: "获取数据失败，请稍后重试" };
     }
 }
 
-// Action: 处理表单提交，存入 D1 数据库
 export async function action({ request, context }: { request: Request, context: any }) {
     const formData = await request.formData();
     const name = formData.get("name") as string;
@@ -50,30 +42,43 @@ export async function action({ request, context }: { request: Request, context: 
         return { error: "数据不完整" };
     }
 
-    // 连接 D1 数据库并保存
     const db = new TradingDB(context.cloudflare.env.DB);
-    await db.createItem({ name, symbol, description, exchange });
 
-    // 保存成功后重定向回管理页
-    return redirect("/items/manage");
+    try {
+        // 尝试保存
+        await db.createItem({ name, symbol, description, exchange });
+        return redirect("/items/manage");
+    } catch (error: any) {
+        // 拦截重复添加的抛错，返回给前端
+        return { error: error.message };
+    }
 }
 
 // ==========================================
 // 2. 客户端 UI 组件
 // ==========================================
-
 export default function NewItemRoute() {
     const navigate = useNavigate();
-    const fetcher = useFetcher<typeof loader>(); // 用于调用同文件内的 loader
+    const fetcher = useFetcher<typeof loader>();
 
     const [inputValue, setInputValue] = useState("");
     const [selectedStock, setSelectedStock] = useState<any>(null);
+    // 获取表单提交 (Action) 返回的数据
+    const actionData = useActionData<typeof action>();
+    // 提取错误信息
+    const errorMsg = fetcher.data?.error;
+
+    // 监听 actionData，如果有 error 就弹出提示
+    useEffect(() => {
+        if (actionData?.error) {
+            Toast.show({ icon: 'fail', content: actionData.error });
+        }
+    }, [actionData]);
 
     // 防抖搜索逻辑
     useEffect(() => {
         const query = inputValue.trim();
 
-        // 如果输入框的值与已选中的股票代码不同，则清除选中状态
         if (selectedStock && selectedStock.symbol !== query) {
             setSelectedStock(null);
         }
@@ -86,7 +91,6 @@ export default function NewItemRoute() {
         }
 
         const timer = setTimeout(() => {
-            // 调用本路由的 loader 接口，自动带上 ?q= 参数
             fetcher.load(`/items/new?q=${encodeURIComponent(query)}`);
         }, 350);
 
@@ -122,7 +126,6 @@ export default function NewItemRoute() {
                     条目名称
                 </div>
 
-                {/* 搜索输入框 */}
                 <div style={{
                     backgroundColor: '#0B0C11',
                     borderRadius: '12px',
@@ -146,7 +149,6 @@ export default function NewItemRoute() {
                     <div style={{ marginTop: '12px', color: '#6D6F7E', fontSize: '14px' }}>搜索中...</div>
                 )}
 
-                {/* 搜索结果列表 */}
                 {!selectedStock && results.length > 0 && (
                     <List
                         style={{
@@ -171,7 +173,6 @@ export default function NewItemRoute() {
                     </List>
                 )}
 
-                {/* 已选择状态提示 */}
                 {selectedStock && (
                     <div style={{ marginTop: '16px', color: '#00E676', fontSize: '14px' }}>
                         已选择：{selectedStock.symbol} · {selectedStock.description}
@@ -179,9 +180,7 @@ export default function NewItemRoute() {
                 )}
             </div>
 
-            {/* 底部保存表单与按钮 */}
             <Form method="post" style={{ padding: '16px 24px', borderTop: '1px solid #1A1C24', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-                {/* 隐藏的 input，用于将选中的数据通过 Form 提交给 Action */}
                 <input type="hidden" name="name" value={selectedStock?.symbol || ""} />
                 <input type="hidden" name="symbol" value={selectedStock?.symbol || ""} />
                 <input type="hidden" name="description" value={selectedStock?.description || ""} />

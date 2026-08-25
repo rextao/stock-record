@@ -1,4 +1,5 @@
 import { TabBar } from 'antd-mobile'
+import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from 'react-router'
 import { TAB_BAR_CONFIG, TAB_BAR_THEME } from './config/tabBarConfig'
 

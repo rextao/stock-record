@@ -9,6 +9,7 @@ import {
 	type MetaFunction,
 } from "react-router";
 import globalStyles from "./styles/global.less?url";
+import {useEffect} from "react";
 
 export const meta: MetaFunction = () => [
 	{ charSet: "utf-8" },
@@ -24,21 +25,27 @@ export const links: LinksFunction = () => [
 	{ rel: "stylesheet", href: globalStyles },
 ];
 
-export default function App() {
+export function Layout({ children }: { children: React.ReactNode }) {
 	return (
-		// 1. 在 html 标签上添加 suppressHydrationWarning
-		<html lang="zh-CN" suppressHydrationWarning>
+		<html lang="en">
 		<head>
+			<meta charSet="utf-8" />
+			<meta name="viewport" content="width=device-width, initial-scale=1" />
 			<Meta />
 			<Links />
 		</head>
-		{/* 2. 删掉原先那一大长串的 style={{ margin: 0, padding: 0... }} */}
-		{/* 3. 在 body 标签上添加 suppressHydrationWarning 防止浏览器插件注入引发报错 */}
-		<body suppressHydrationWarning>
-		<Outlet />
+		<body>
+		{children}
 		<ScrollRestoration />
 		<Scripts />
 		</body>
 		</html>
 	);
+}
+export default function App() {
+	useEffect(() => {
+		// 强制 antd-mobile 内部的所有组件（List、Popup、Dialog 等）使用深色主题
+		document.documentElement.setAttribute('data-prefers-color-scheme', 'dark');
+	}, []);
+	return <Outlet />;
 }

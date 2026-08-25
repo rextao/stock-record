@@ -43,7 +43,6 @@ export default function MineRoute() {
                             <ListTree size={18} color="#A855F7" />
                         </div>
                     }
-                    extra={<ChevronRight size={20} color="#6D6F7E" />}
                     onClick={() => navigate('/items/manage')}
                     style={{ '--active-background-color': '#1A1C24' }}
                 >

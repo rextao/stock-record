@@ -42,15 +42,48 @@ export class TradingDB {
         return results;
     }
 
-    async createItem(data: { name: string; symbol?: string; description?: string; exchange?: string }): Promise<number> {
-        const createdAt = this.nowLocalTime();
-        const { results } = await this.db
-            .prepare(`INSERT INTO items (name, symbol, description, exchange, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id`)
-            .bind(data.name, data.symbol || null, data.description || null, data.exchange || null, createdAt)
-            .all<{ id: number }>();
-        return results[0].id;
+    // ==========================================
+    // 条目管理 (Items)
+    // ==========================================
+
+    // 1. 新增条目 (带重复校验)
+    async createItem(item: { name: string; symbol: string; description: string; exchange: string }): Promise<void> {
+        // 校验是否已经存在相同 symbol 的股票
+        const existing = await this.db.prepare('SELECT id FROM items WHERE symbol = ?').bind(item.symbol).first();
+        if (existing) {
+            throw new Error(`标的 ${item.symbol} 已存在，请勿重复添加`);
+        }
+
+        await this.db.prepare(
+            'INSERT INTO items (name, symbol, description, exchange) VALUES (?, ?, ?, ?)'
+        ).bind(item.name, item.symbol, item.description, item.exchange).run();
     }
 
+    // 2. 删除条目 (级联删除关联的 trades 和 sell_records)
+    async deleteItem(id: number): Promise<void> {
+        // 查找该条目下的所有交易记录 ID
+        const tradesRows = await this.db.prepare('SELECT id FROM trades WHERE item_id = ?').bind(id).all();
+        const tradeIds = tradesRows.results.map((t: any) => t.id);
+
+        const stmts = [];
+
+        // 如果有交易记录，先删除它们的卖出记录
+        if (tradeIds.length > 0) {
+            const placeholders = tradeIds.map(() => '?').join(',');
+            stmts.push(
+                this.db.prepare(`DELETE FROM sell_records WHERE trade_id IN (${placeholders})`).bind(...tradeIds)
+            );
+        }
+
+        // 删除该条目下的交易记录
+        stmts.push(this.db.prepare('DELETE FROM trades WHERE item_id = ?').bind(id));
+
+        // 最后删除条目本身
+        stmts.push(this.db.prepare('DELETE FROM items WHERE id = ?').bind(id));
+
+        // 使用批量事务，保证数据一致性
+        await this.db.batch(stmts);
+    }
     // ============== Trades ==============
     async createTrade(data: { item_id: number; current_price: number; target_price: number; stop_loss_price: number; buy_quantity: number; notes?: string }): Promise<number> {
         const now = this.nowLocalTime();
