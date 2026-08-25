@@ -30,7 +30,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
 		<html lang="en">
 		<head>
 			<meta charSet="utf-8" />
-			<meta name="viewport" content="width=device-width, initial-scale=1" />
+			{/* 1. 优化 viewport：禁止缩放，并适配刘海屏 (viewport-fit=cover) */}
+			<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+
+			{/* 2. PWA 标准清单 */}
+			<link rel="manifest" href="/manifest.json" />
+
+			{/* 3. iOS 专属配置 */}
+			{/* 允许全屏独立运行 */}
+			<meta name="apple-mobile-web-app-capable" content="yes" />
+			{/* 沉浸式状态栏：让顶部的系统时间、信号栏融入深色背景 */}
+			<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+			{/* 保存在桌面时的 App 名称 */}
+			<meta name="apple-mobile-web-app-title" content="交易账本" />
+			{/* 桌面图标 (需配合下一步放置图片文件) */}
+			<link rel="apple-touch-icon" href="/icon-192.png" />
+
+			{/* 保持原有的标签 */}
 			<Meta />
 			<Links />
 		</head>
