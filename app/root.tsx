@@ -63,5 +63,19 @@ export default function App() {
 		// 强制 antd-mobile 内部的所有组件（List、Popup、Dialog 等）使用深色主题
 		document.documentElement.setAttribute('data-prefers-color-scheme', 'dark');
 	}, []);
+
+	// 2. 👇 注册 Service Worker (仅在支持的浏览器中运行)
+	if ('serviceWorker' in navigator) {
+		window.addEventListener('load', () => {
+			// vite-plugin-pwa 默认会把脚本打包到根目录的 sw.js
+			navigator.serviceWorker.register('/sw.js', { type: 'module' })
+				.then((registration) => {
+					console.log('SW 注册成功，应用已具备离线访问能力:', registration.scope);
+				})
+				.catch((error) => {
+					console.error('SW 注册失败:', error);
+				});
+		});
+	}
 	return <Outlet />;
 }
