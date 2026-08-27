@@ -1,0 +1,158 @@
+.page {
+    min-height: 100vh;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    padding-bottom: @page-bottom-tabbar;
+}
+
+.pageTitle {
+    padding: @gap-lg @gap-xl @gap-md;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+/* 横向滚动的时间区间选择器 */
+.rangeBar {
+    padding: 0 @gap-lg;
+    margin-bottom: @gap-lg;
+    overflow-x: auto;
+    display: flex;
+    white-space: nowrap;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.rangeChip {
+    flex-shrink: 0;
+    padding: 6px @gap-lg;
+    margin-right: @gap-sm;
+    border: 1px solid var(--border);
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    border-radius: @radius-pill;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.rangeChipActive {
+    border-color: var(--accent);
+    background-color: var(--accent);
+    color: var(--text-on-accent);
+}
+
+.body {
+    padding: 0 @gap-lg;
+}
+
+.statGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: @gap-md;
+    margin-bottom: @gap-md;
+}
+
+.statBlock {
+    flex: 1;
+    min-width: 40%;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-xl;
+    padding: @gap-lg;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.statLabel {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: @gap-sm;
+}
+
+.statValue {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.totalCard {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-xl;
+    padding: @gap-xl;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: @gap-md;
+}
+
+.totalLabel {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: @gap-sm;
+}
+
+.totalValue {
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.chartCard {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-xl;
+    padding: @gap-lg;
+    margin-bottom: @gap-md;
+}
+
+.rankCard {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-xl;
+    padding: @gap-lg;
+}
+
+.rankTitle {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: @gap-md;
+}
+
+.rankEmpty {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.rankRow {
+    display: flex;
+    justify-content: space-between;
+    padding: @gap-md 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.rankName {
+    font-size: 16px;
+}
+
+.rankValue {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.calendarPopup {
+    border-top-left-radius: @radius-xl;
+    border-top-right-radius: @radius-xl;
+    background-color: var(--popup-bg);
+}
+
+.up {
+    color: var(--pnl-up);
+}
+
+.down {
+    color: var(--pnl-down);
+}

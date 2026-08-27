@@ -1,3 +1,5 @@
+@import './tokens.less';
+
 * {
     margin: 0;
     padding: 0;
@@ -12,5 +14,7 @@ html, body {
     user-select: none;
     margin: 0;
     padding: 0;
-    background-color: #000000; /* 保持与深色主题一致，防止滚动回弹露白 */
+    /* 跟随主题令牌，防止滚动回弹时露出与主题不符的底色 */
+    background-color: var(--app-bg);
+    color: var(--text-primary);
 }

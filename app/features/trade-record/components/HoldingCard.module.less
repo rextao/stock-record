@@ -1,0 +1,196 @@
+.card {
+    padding: @gap-lg;
+    background-color: var(--card-bg);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: @gap-md;
+}
+
+.titleGroup {
+    display: flex;
+    align-items: center;
+    gap: @gap-sm;
+}
+
+.itemName {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.itemMeta {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.livePrice {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.livePriceValue {
+    font-family: monospace;
+}
+
+.summary {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: @gap-md;
+}
+
+.summaryCell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+
+    &.alignCenter {
+        align-items: center;
+    }
+
+    &.alignEnd {
+        align-items: flex-end;
+    }
+}
+
+.summaryLabel {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: @gap-xs;
+}
+
+.summaryValue {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+
+    &.weightNormal {
+        font-weight: 500;
+    }
+}
+
+.toggleRow {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: @gap-xs;
+}
+
+.toggleButton {
+    padding: @gap-xs 0 @gap-xs @gap-lg;
+    cursor: pointer;
+    color: var(--accent-purple);
+    display: inline-flex;
+}
+
+.subTradeList {
+    margin-top: @gap-sm;
+}
+
+.subTrade {
+    display: flex;
+    justify-content: space-between;
+    padding: @gap-md 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.subTradeLeft {
+    display: flex;
+    flex-direction: column;
+    min-width: 85px;
+}
+
+.buyTime {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: @gap-xs;
+    letter-spacing: 0.5px;
+}
+
+.buyPrice {
+    font-size: 12px;
+    color: var(--text-primary);
+    margin-bottom: @gap-xs;
+}
+
+.buyQty {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.inlineLabel {
+    color: var(--text-secondary);
+}
+
+.subTradeRight {
+    display: flex;
+    gap: @gap-sm;
+    text-align: right;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.metricCol {
+    display: flex;
+    flex-direction: column;
+    opacity: 0.7;
+    min-width: 50px;
+}
+
+.metricLabel {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.metricValue {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.metricPct {
+    font-size: 11px;
+}
+
+.pnlCol {
+    display: flex;
+    flex-direction: column;
+    border-radius: @radius-sm;
+    min-width: 70px;
+    align-items: flex-end;
+    background-color: transparent;
+
+    /* 有实时价时给一层强调底色，把当前盈亏从其他列里挑出来 */
+    &.pnlColLive {
+        background-color: var(--accent-soft);
+    }
+}
+
+.pnlAmount {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.pnlPerShare {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: @gap-xs;
+}
+
+.pnlEmpty {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* 涨跌语义色，供上面所有需要着色的数字复用 */
+.up {
+    color: var(--pnl-up);
+}
+
+.down {
+    color: var(--pnl-down);
+}
+

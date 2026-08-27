@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Popup, Input, Button, Toast } from 'antd-mobile';
 import { X } from 'lucide-react';
+import clsx from 'clsx';
+import styles from './SellModal.module.less';
+
+const FRACTIONS = [
+    { label: '全仓', f: 1 },
+    { label: '半仓', f: 0.5 },
+    { label: '1/3', f: 0.333 },
+    { label: '1/4', f: 0.25 },
+];
 
 export function SellModal({
                               visible,
@@ -18,7 +27,6 @@ export function SellModal({
 
     useEffect(() => {
         if (visible) {
-            // 如果想体验更好，你可以把下一行改成 setSellPrice(holding?.live_price ? String(holding.live_price) : '');
             setSellPrice('');
             setSellQty('');
         }
@@ -63,87 +71,71 @@ export function SellModal({
     // 总盈亏 = 单仓盈亏 * 卖出数量
     const totalPnl = pnlPerShare * inputQty;
     // 盈亏比例
-    const pnlPct = (isValidInput && costPrice > 0) ? (pnlPerShare / costPrice) * 100 : 0;
+    const pnlPct = isValidInput && costPrice > 0 ? (pnlPerShare / costPrice) * 100 : 0;
+
+    // 未填全输入时统一置灰，填全后再按涨跌着色
+    const pnlTone = (value: number) =>
+        !isValidInput ? styles.idle : value >= 0 ? styles.up : styles.down;
 
     return (
-        <Popup visible={visible} onMaskClick={onClose} bodyStyle={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', backgroundColor: '#12121A' }}>
-            <div style={{ padding: '24px', color: '#fff' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <span style={{ fontSize: '18px', fontWeight: 600 }}>快捷卖出 - {holding.item_name}</span>
-                    <X size={24} color="#6D6F7E" onClick={onClose} />
+        <Popup visible={visible} onMaskClick={onClose} bodyClassName={styles.popupBody}>
+            <div className={styles.body}>
+                <div className={styles.header}>
+                    <span className={styles.title}>快捷卖出 - {holding.item_name}</span>
+                    <span className={styles.closeButton} onClick={onClose}>
+                        <X size={24} />
+                    </span>
                 </div>
 
-                <div style={{ fontSize: '14px', color: '#6D6F7E', marginBottom: '12px' }}>卖出数量（剩余 {holding.remaining_qty}）</div>
+                <div className={styles.label}>卖出数量（剩余 {holding.remaining_qty}）</div>
 
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                    {[ {label: '全仓', f: 1}, {label: '半仓', f: 0.5}, {label: '1/3', f: 0.333}, {label: '1/4', f: 0.25} ].map(btn => (
-                        <div key={btn.label} onClick={() => setQtyFraction(btn.f)}
-                             style={{ flex: 1, textAlign: 'center', padding: '8px 0', backgroundColor: '#0B0C11', border: '1px solid #1A1C24', borderRadius: '8px', fontSize: '14px' }}>
+                <div className={styles.fractionRow}>
+                    {FRACTIONS.map((btn) => (
+                        <div key={btn.label} className={styles.fractionButton} onClick={() => setQtyFraction(btn.f)}>
                             {btn.label}
                         </div>
                     ))}
                 </div>
 
-                <div style={{ backgroundColor: '#0B0C11', borderRadius: '8px', padding: '8px 12px', border: '1px solid #1A1C24', marginBottom: '16px' }}>
-                    <Input type="number" value={sellQty} onChange={setSellQty} placeholder="输入数量" style={{ '--color': '#fff' }} />
+                <div className={styles.inputWrapper}>
+                    <Input type="number" value={sellQty} onChange={setSellQty} placeholder="输入数量" />
                 </div>
 
-                <div style={{ fontSize: '14px', color: '#6D6F7E', marginBottom: '12px' }}>实际卖出价格</div>
-                <div style={{ backgroundColor: '#0B0C11', borderRadius: '8px', padding: '8px 12px', border: '1px solid #1A1C24', marginBottom: '16px' }}>
-                    <Input type="number" value={sellPrice} onChange={setSellPrice} placeholder="0.00" style={{ '--color': '#fff' }} />
+                <div className={styles.label}>实际卖出价格</div>
+                <div className={styles.inputWrapper}>
+                    <Input type="number" value={sellPrice} onChange={setSellPrice} placeholder="0.00" />
                 </div>
 
-                {/* ==========================================
-                    新增：动态盈亏看板
-                ========================================== */}
-                <div style={{
-                    backgroundColor: '#0B0C11',
-                    border: '1px dashed #1A1C24',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    marginBottom: '24px'
-                }}>
-                    <div style={{ fontSize: '12px', color: '#6D6F7E', marginBottom: '8px' }}>
-                        预计平仓盈亏 (成本价 {costPrice.toFixed(2)})
-                    </div>
+                {/* 动态盈亏看板 */}
+                <div className={styles.pnlPanel}>
+                    <div className={styles.pnlPanelLabel}>预计平仓盈亏 (成本价 {costPrice.toFixed(2)})</div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                    <div className={styles.pnlPanelBody}>
                         {/* 左侧：总盈亏金额与比例 */}
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{
-                                fontSize: '20px',
-                                fontWeight: 600,
-                                color: !isValidInput ? '#6D6F7E' : (totalPnl >= 0 ? '#FF5252' : '#00E676')
-                            }}>
+                        <div className={styles.pnlMain}>
+                            <span className={clsx(styles.pnlAmount, pnlTone(totalPnl))}>
                                 {isValidInput ? `${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}` : '--'}
                             </span>
-                            <span style={{
-                                fontSize: '12px',
-                                color: !isValidInput ? '#6D6F7E' : (pnlPct >= 0 ? '#FF5252' : '#00E676'),
-                                marginTop: '2px'
-                            }}>
+                            <span className={clsx(styles.pnlPct, pnlTone(pnlPct))}>
                                 {isValidInput ? `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%` : '--'}
                             </span>
                         </div>
 
                         {/* 右侧：单仓盈亏明细 */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                            <span style={{ fontSize: '11px', color: '#6D6F7E' }}>单仓盈亏</span>
-                            <span style={{
-                                fontSize: '13px',
-                                color: !isValidInput ? '#6D6F7E' : '#fff',
-                                marginTop: '2px'
-                            }}>
+                        <div className={styles.pnlSide}>
+                            <span className={styles.pnlSideLabel}>单仓盈亏</span>
+                            <span className={clsx(styles.pnlSideValue, !isValidInput && styles.idle)}>
                                 {isValidInput ? `${pnlPerShare >= 0 ? '+' : ''}${pnlPerShare.toFixed(2)}` : '--'}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <Button block onClick={handleConfirm} style={{ backgroundColor: '#00E676', color: '#000', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: 600, height: '48px' }}>
+                <Button block onClick={handleConfirm} className={styles.confirmButton}>
                     确认卖出
                 </Button>
             </div>
         </Popup>
     );
 }
+

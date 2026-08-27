@@ -19,12 +19,5 @@ export const TAB_BAR_CONFIG: TabBarItemConfig[] = [
     },
 ]
 
-// 根据图片调整的主题色
-export const TAB_BAR_THEME = {
-    // 底部栏整体背景色
-    backgroundColor: '#0B0C11',
-    // 激活状态下的紫色 (图标和文字)
-    activeColor: '#BD83FF',
-    // 未激活状态下的灰色 (图标和文字)
-    inactiveColor: '#6D6F7E',
-}
+// TabBar 的配色已迁到 CSS 令牌：--tab-bg / --tab-active / --tab-inactive
+// 见 app/styles/tokens.less 与 BasicLayout.module.less

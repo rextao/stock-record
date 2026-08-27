@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useLoaderData, useNavigate, useSubmit, redirect } from "react-router";
 import { NavBar, Input, TextArea, Button, Toast } from "antd-mobile";
+import clsx from "clsx";
 import { createTrade, fetchItems } from "../../api/trading";
+import styles from "./new.module.less";
 
 // ==========================================
 // 1. 客户端数据逻辑
@@ -48,6 +50,10 @@ export async function clientAction({ request }: { request: Request }) {
 
 // 格式化辅助函数
 const formatPct = (val: number) => `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
+
+type Tone = 'default' | 'up' | 'down';
+
+const toneClass = (tone: Tone) => (tone === 'up' ? styles.up : tone === 'down' ? styles.down : undefined);
 
 export default function NewTradeRoute() {
     const { items } = useLoaderData<typeof clientLoader>();
@@ -110,39 +116,28 @@ export default function NewTradeRoute() {
     };
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#000000', color: '#fff', display: 'flex', flexDirection: 'column' }}>
-            <NavBar
-                onBack={() => navigate(-1)}
-                style={{ '--border-bottom': '1px solid #1A1C24', backgroundColor: '#000000' }}
-            >
+        <div className={styles.page}>
+            <NavBar onBack={() => navigate(-1)} className={styles.navBar}>
                 新增记录
             </NavBar>
 
-            <div style={{ padding: '16px', flex: 1, paddingBottom: '120px' }}>
+            <div className={styles.content}>
 
                 {/* 1. 选择条目 */}
-                <div style={{ fontSize: '14px', color: '#6D6F7E', marginBottom: '12px' }}>选择条目</div>
+                <div className={styles.sectionTitle}>选择条目</div>
                 {items.length === 0 ? (
-                    <div style={{ backgroundColor: '#0B0C11', border: '1px solid #1A1C24', borderRadius: '12px', padding: '16px', textAlign: 'center', color: '#6D6F7E' }}>
+                    <div className={styles.emptyItems}>
                         暂无条目，请先在「我的」中添加
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    <div className={styles.itemChips}>
                         {items.map((item: any) => {
                             const isSelected = selectedItemId === item.id;
                             return (
                                 <div
                                     key={item.id}
                                     onClick={() => setSelectedItemId(item.id)}
-                                    style={{
-                                        padding: '8px 16px',
-                                        borderRadius: '20px',
-                                        border: `1px solid ${isSelected ? '#6C5CE7' : '#1A1C24'}`,
-                                        backgroundColor: isSelected ? '#6C5CE7' : '#0B0C11',
-                                        color: isSelected ? '#fff' : '#F8F9FA',
-                                        fontSize: '14px',
-                                        transition: 'all 0.2s'
-                                    }}
+                                    className={clsx(styles.itemChip, isSelected && styles.itemChipActive)}
                                 >
                                     {item.name}
                                 </div>
@@ -152,9 +147,9 @@ export default function NewTradeRoute() {
                 )}
 
                 {/* 2. 价格与数量信息 */}
-                <div style={{ fontSize: '14px', color: '#6D6F7E', marginTop: '32px', marginBottom: '12px' }}>价格信息</div>
+                <div className={clsx(styles.sectionTitle, styles.sectionTitleSpaced)}>价格信息</div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className={styles.formRows}>
                     <FormRow label="当前价 *" value={currentPrice} onChange={setCurrentPrice} placeholder="0.00" />
                     <FormRow label="预期价 *" value={targetPrice} onChange={setTargetPrice} placeholder="0.00" />
                     <FormRow label="止损价 *" value={stopLossPrice} onChange={setStopLossPrice} placeholder="0.00" />
@@ -163,47 +158,35 @@ export default function NewTradeRoute() {
 
                 {/* 3. 实时计算收益分析面板 */}
                 {(upside !== null || downside !== null || rewardRisk !== null) && (
-                    <div style={{
-                        display: 'flex', justifyContent: 'space-around',
-                        backgroundColor: '#0B0C11', border: '1px solid #1A1C24', borderRadius: '12px',
-                        padding: '16px', marginTop: '16px'
-                    }}>
+                    <div className={styles.calcPanel}>
                         {upside !== null && (
-                            <CalcItem label="预期涨幅" value={formatPct(upside)} color={upside >= 0 ? '#FF5252' : '#00E676'} />
+                            <CalcItem label="预期涨幅" value={formatPct(upside)} tone={upside >= 0 ? 'up' : 'down'} />
                         )}
                         {downside !== null && (
-                            <CalcItem label="预期跌幅" value={formatPct(-downside)} color="#00E676" />
+                            <CalcItem label="预期跌幅" value={formatPct(-downside)} tone="down" />
                         )}
                         {rewardRisk !== null && (
-                            <CalcItem label="盈亏比" value={rewardRisk} color="#F8F9FA" />
+                            <CalcItem label="盈亏比" value={rewardRisk} />
                         )}
                     </div>
                 )}
 
                 {/* 4. 备注 */}
-                <div style={{ fontSize: '14px', color: '#6D6F7E', marginTop: '32px', marginBottom: '12px' }}>备注</div>
-                <div style={{ backgroundColor: '#0B0C11', borderRadius: '12px', border: '1px solid #1A1C24', padding: '12px 16px' }}>
+                <div className={clsx(styles.sectionTitle, styles.sectionTitleSpaced)}>备注</div>
+                <div className={styles.notesBox}>
                     <TextArea
                         placeholder="记录你的想法和买入逻辑..."
                         value={notes}
                         onChange={setNotes}
                         autoSize={{ minRows: 4, maxRows: 8 }}
-                        style={{ '--color': '#F8F9FA', '--font-size': '16px' }}
+                        className={styles.field}
                     />
                 </div>
             </div>
 
             {/* 底部保存按钮 */}
-            <div style={{
-                position: 'fixed', bottom: 0, left: 0, right: 0,
-                padding: '16px 24px calc(16px + env(safe-area-inset-bottom))',
-                backgroundColor: '#000000', borderTop: '1px solid #1A1C24', zIndex: 90
-            }}>
-                <Button
-                    block
-                    onClick={handleSave}
-                    style={{ backgroundColor: '#6C5CE7', color: '#fff', border: 'none', borderRadius: '12px', height: '48px', fontSize: '16px', fontWeight: 600 }}
-                >
+            <div className={styles.actionBar}>
+                <Button block onClick={handleSave} className={styles.saveButton}>
                     保存记录
                 </Button>
             </div>
@@ -215,14 +198,14 @@ export default function NewTradeRoute() {
 function FormRow({ label, value, onChange, placeholder }: { label: string, value: string, onChange: (v: string) => void, placeholder: string }) {
     return (
         <div>
-            <div style={{ fontSize: '14px', color: '#9CA3AF', marginBottom: '8px' }}>{label}</div>
-            <div style={{ backgroundColor: '#0B0C11', borderRadius: '12px', border: '1px solid #1A1C24', padding: '8px 16px' }}>
+            <div className={styles.fieldLabel}>{label}</div>
+            <div className={styles.fieldBox}>
                 <Input
                     type="number"
                     value={value}
                     onChange={onChange}
                     placeholder={placeholder}
-                    style={{ '--color': '#F8F9FA', '--font-size': '16px' }}
+                    className={styles.field}
                 />
             </div>
         </div>
@@ -230,11 +213,11 @@ function FormRow({ label, value, onChange, placeholder }: { label: string, value
 }
 
 // 辅助子组件：计算结果项
-function CalcItem({ label, value, color }: { label: string, value: string, color: string }) {
+function CalcItem({ label, value, tone = 'default' }: { label: string; value: string; tone?: Tone }) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', color: '#6D6F7E', marginBottom: '4px' }}>{label}</span>
-            <span style={{ fontSize: '18px', fontWeight: 700, color }}>{value}</span>
+        <div className={styles.calcItem}>
+            <span className={styles.calcLabel}>{label}</span>
+            <span className={clsx(styles.calcValue, toneClass(tone))}>{value}</span>
         </div>
     );
 }

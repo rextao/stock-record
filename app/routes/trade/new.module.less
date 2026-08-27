@@ -1,0 +1,150 @@
+.page {
+    min-height: 100vh;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+}
+
+.navBar {
+    --border-bottom: 1px solid var(--border);
+
+    background-color: var(--app-bg);
+}
+
+.content {
+    padding: @gap-lg;
+    flex: 1;
+    padding-bottom: @page-bottom-action;
+}
+
+.sectionTitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: @gap-md;
+}
+
+/* 第二段起的分组标题需要与上一组拉开距离 */
+.sectionTitleSpaced {
+    margin-top: 32px;
+}
+
+.emptyItems {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+    padding: @gap-lg;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.itemChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: @gap-sm;
+}
+
+.itemChip {
+    padding: @gap-sm @gap-lg;
+    border-radius: @radius-pill;
+    border: 1px solid var(--border);
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.itemChipActive {
+    border-color: var(--accent);
+    background-color: var(--accent);
+    color: var(--text-on-accent);
+}
+
+.formRows {
+    display: flex;
+    flex-direction: column;
+    gap: @gap-lg;
+}
+
+.fieldLabel {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: @gap-sm;
+}
+
+.fieldBox {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+    padding: @gap-sm @gap-lg;
+}
+
+.field {
+    --color: var(--text-primary);
+    --font-size: 16px;
+}
+
+.notesBox {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+    padding: @gap-md @gap-lg;
+}
+
+.calcPanel {
+    display: flex;
+    justify-content: space-around;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+    padding: @gap-lg;
+    margin-top: @gap-lg;
+}
+
+.calcItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.calcLabel {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: @gap-xs;
+}
+
+.calcValue {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.up {
+    color: var(--pnl-up);
+}
+
+.down {
+    color: var(--pnl-down);
+}
+
+/* 固定在底部的保存条 */
+.actionBar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: @gap-lg @gap-xl calc(@gap-lg + @safe-bottom);
+    background-color: var(--app-bg);
+    border-top: 1px solid var(--border);
+    z-index: 90;
+}
+
+.saveButton {
+    height: 48px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: @radius-lg;
+    background-color: var(--accent);
+    color: var(--text-on-accent);
+}

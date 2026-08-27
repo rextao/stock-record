@@ -1,0 +1,39 @@
+.layout {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh; /* 动态视口高度，适配 iOS 地址栏收起 */
+    width: 100%;
+    background-color: var(--app-bg);
+}
+
+.main {
+    flex: 1;
+    overflow-y: auto;
+    color: var(--text-primary);
+}
+
+.footer {
+    border-top: 1px solid var(--border);
+    background-color: var(--tab-bg);
+    /* 底部安全区由 antd-mobile 的 SafeArea 垫高，这里不手写 padding */
+    z-index: 100;
+}
+
+/* lucide 图标默认 color=currentColor，所以颜色交给外层 span 控制即可 */
+.tabIcon {
+    display: inline-flex;
+    color: var(--tab-inactive);
+}
+
+.tabTitle {
+    display: block;
+    font-size: 11px;
+    margin-top: 3px;
+    color: var(--tab-inactive);
+}
+
+.tabIconActive,
+.tabTitleActive {
+    color: var(--tab-active);
+}
+

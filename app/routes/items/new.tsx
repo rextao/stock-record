@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useFetcher, Form, redirect, useActionData} from "react-router";
 import { NavBar, Button, List, Input, Toast } from "antd-mobile";
 import { Search } from "lucide-react";
+import clsx from "clsx";
 import { createItem, searchStocks } from "~/api/trading";
+import styles from "./new.module.less";
 
 // ==========================================
 // 1. 客户端数据逻辑（搜索走 fetcher.load，保存走 Form）
@@ -103,74 +105,55 @@ export default function NewItemRoute() {
     const isSearching = fetcher.state === "loading";
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#000000', color: '#fff', display: 'flex', flexDirection: 'column' }}>
-            <NavBar
-                onBack={() => navigate(-1)}
-                style={{ '--border-bottom': '1px solid #1A1C24', backgroundColor: '#000000' }}
-            >
+        <div className={styles.page}>
+            <NavBar onBack={() => navigate(-1)} className={styles.navBar}>
                 新增条目
             </NavBar>
 
-            <div style={{ padding: '16px', flex: 1 }}>
-                <div style={{ fontSize: '14px', color: '#6D6F7E', marginBottom: '8px', letterSpacing: '1px' }}>
-                    条目名称
-                </div>
+            <div className={styles.content}>
+                <div className={styles.fieldLabel}>条目名称</div>
 
-                <div style={{
-                    backgroundColor: '#0B0C11',
-                    borderRadius: '12px',
-                    padding: '12px 16px',
-                    border: '1px solid #1A1C24',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                }}>
-                    <Search size={20} color="#6D6F7E" />
+                <div className={styles.searchBox}>
+                    <span className={styles.searchIcon}>
+                        <Search size={20} />
+                    </span>
                     <Input
                         value={inputValue}
                         onChange={setInputValue}
                         placeholder="输入股票代码或名称"
-                        style={{ '--color': '#fff' }}
+                        className={styles.searchInput}
                         clearable
                     />
                 </div>
 
                 {isSearching && (
-                    <div style={{ marginTop: '12px', color: '#6D6F7E', fontSize: '14px' }}>搜索中...</div>
+                    <div className={styles.searching}>搜索中...</div>
                 )}
 
                 {!selectedStock && results.length > 0 && (
-                    <List
-                        style={{
-                            marginTop: '12px',
-                            '--border-top': 'none', '--border-bottom': 'none',
-                            '--border-inner': '1px solid #1A1C24',
-                            borderRadius: '12px', overflow: 'hidden',
-                            backgroundColor: '#0B0C11'
-                        }}
-                    >
+                    <List className={styles.resultList}>
                         {results.map((stock: any) => (
                             <List.Item
                                 key={`${stock.symbol}-${stock.exchange}`}
                                 onClick={() => handleSelect(stock)}
-                                extra={<span style={{ color: '#6D6F7E', fontSize: '12px' }}>{stock.exchange}</span>}
-                                style={{ '--active-background-color': '#1A1C24' }}
+                                extra={<span className={styles.resultExchange}>{stock.exchange}</span>}
+                                className={styles.resultItem}
                             >
-                                <div style={{ color: '#fff', fontSize: '16px', fontWeight: 500 }}>{stock.symbol}</div>
-                                <div style={{ color: '#6D6F7E', fontSize: '12px', marginTop: '4px' }}>{stock.description}</div>
+                                <div className={styles.resultSymbol}>{stock.symbol}</div>
+                                <div className={styles.resultDesc}>{stock.description}</div>
                             </List.Item>
                         ))}
                     </List>
                 )}
 
                 {selectedStock && (
-                    <div style={{ marginTop: '16px', color: '#00E676', fontSize: '14px' }}>
+                    <div className={styles.selectedHint}>
                         已选择：{selectedStock.symbol} · {selectedStock.description}
                     </div>
                 )}
             </div>
 
-            <Form method="post" style={{ padding: '16px 24px', borderTop: '1px solid #1A1C24', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <Form method="post" className={styles.actionBar}>
                 <input type="hidden" name="name" value={selectedStock?.symbol || ""} />
                 <input type="hidden" name="symbol" value={selectedStock?.symbol || ""} />
                 <input type="hidden" name="description" value={selectedStock?.description || ""} />
@@ -179,15 +162,7 @@ export default function NewItemRoute() {
                 <Button
                     type="submit"
                     block
-                    style={{
-                        backgroundColor: selectedStock ? '#6C5CE7' : '#2A2C35',
-                        color: selectedStock ? '#fff' : '#6D6F7E',
-                        border: 'none',
-                        borderRadius: '12px',
-                        height: '44px',
-                        fontSize: '16px',
-                        fontWeight: 600
-                    }}
+                    className={clsx(styles.saveButton, !selectedStock && styles.saveButtonDisabled)}
                     onClick={handleSave}
                 >
                     保存条目

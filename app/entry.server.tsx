@@ -35,7 +35,9 @@ export default async function handleRequest(
 	const html = await new Response(stream).text();
 
 	responseHeaders.set("Content-Type", "text/html");
-	return new Response(`<!DOCTYPE html>${html}`, {
+	// renderToReadableStream 在根节点是 <html> 时已经自带 <!DOCTYPE html>，
+	// 这里不能再手动拼一遍，否则产出的 index.html 会出现两个 doctype。
+	return new Response(html, {
 		headers: responseHeaders,
 		status: statusCode,
 	});

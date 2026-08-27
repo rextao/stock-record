@@ -1,0 +1,21 @@
+.fab {
+    position: fixed;
+    right: @gap-xl;
+    bottom: calc(32px + @safe-bottom);
+    width: 48px;
+    height: 48px;
+    background-color: var(--fab-bg);
+    color: var(--text-on-accent);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--fab-shadow);
+    z-index: 90;
+
+    /* 带 TabBar 的页面要再抬高，避免压住底部导航 */
+    &.aboveTabBar {
+        bottom: calc(@page-bottom-tabbar + @safe-bottom);
+    }
+}
+

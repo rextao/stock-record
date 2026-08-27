@@ -1,4 +1,7 @@
 import { useEffect, useRef } from 'react'
+import clsx from 'clsx'
+import { readToken, useThemeStore } from '~/common/theme/themeStore'
+import styles from './PnlTrendChart.module.less'
 
 export interface TrendPoint {
     date: string
@@ -7,15 +10,6 @@ export interface TrendPoint {
 
 interface Props {
     points: TrendPoint[]
-}
-
-function hexToRgba(hex: string, alpha: number) {
-    const h = hex.replace('#', '')
-    const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16)
-    const r = (n >> 16) & 255
-    const g = (n >> 8) & 255
-    const b = n & 255
-    return `rgba(${r},${g},${b},${alpha})`
 }
 
 function shortDate(ymd: string) {
@@ -30,6 +24,7 @@ function drawChart(
     height: number,
     points: TrendPoint[],
     lineColor: string,
+    fillColor: string,
     muted: string,
     separator: string
 ) {
@@ -85,7 +80,7 @@ function drawChart(
     ctx.lineTo(xAt(points.length - 1), zeroY)
     ctx.lineTo(xAt(0), zeroY)
     ctx.closePath()
-    ctx.fillStyle = hexToRgba(lineColor, 0.16)
+    ctx.fillStyle = fillColor
     ctx.fill()
 
     ctx.beginPath()
@@ -117,17 +112,23 @@ function drawChart(
 
 export default function PnlTrendChart({ points }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    // 主题切换后 Canvas 不会自动重绘，把 resolved 作为依赖显式触发一次
+    const resolvedTheme = useThemeStore((s) => s.resolved)
 
     const last = points[points.length - 1]?.value ?? 0
-    const lineColor = last >= 0 ? '#FF5252' : '#00E676'
-    const mutedColor = '#6B7280'
-    const separatorColor = 'rgba(255,255,255,0.06)'
+    const isUp = last >= 0
 
     useEffect(() => {
         const canvas = canvasRef.current
         if (!canvas) return
         const ctx = canvas.getContext('2d')
         if (!ctx) return
+
+        // Canvas 拿不到 CSS 变量，只能在绘制时把令牌读成字符串
+        const lineColor = readToken(isUp ? '--pnl-up' : '--pnl-down')
+        const fillColor = readToken(isUp ? '--pnl-up-fill' : '--pnl-down-fill')
+        const mutedColor = readToken('--chart-muted')
+        const separatorColor = readToken('--chart-grid')
 
         // 获取 Canvas 在屏幕上的真实 CSS 尺寸
         const rect = canvas.getBoundingClientRect()
@@ -138,19 +139,19 @@ export default function PnlTrendChart({ points }: Props) {
         canvas.height = rect.height * dpr
         ctx.scale(dpr, dpr)
 
-        drawChart(ctx, rect.width, rect.height, points, lineColor, mutedColor, separatorColor)
-    }, [points, lineColor])
+        drawChart(ctx, rect.width, rect.height, points, lineColor, fillColor, mutedColor, separatorColor)
+    }, [points, isUp, resolvedTheme])
 
     return (
-        <div style={{ marginBottom: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '16px', fontWeight: 500, color: '#F8F9FA' }}>盈亏趋势</span>
-                <span style={{ fontSize: '16px', fontWeight: 600, color: lineColor }}>
-          {last >= 0 ? '+' : ''}{last.toFixed(2)}
-        </span>
+        <div className={styles.wrapper}>
+            <div className={styles.header}>
+                <span className={styles.title}>盈亏趋势</span>
+                <span className={clsx(styles.value, isUp ? styles.up : styles.down)}>
+                    {isUp ? '+' : ''}{last.toFixed(2)}
+                </span>
             </div>
-            {/* 设定 CSS 视觉尺寸 */}
-            <canvas ref={canvasRef} style={{ width: '100%', height: '220px', display: 'block' }} />
+            {/* CSS 视觉尺寸由 .canvas 固定，物理像素在 effect 里按 dpr 放大 */}
+            <canvas ref={canvasRef} className={styles.canvas} />
         </div>
     )
 }

@@ -1,0 +1,109 @@
+.page {
+    min-height: 100vh;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+}
+
+.navBar {
+    --border-bottom: 1px solid var(--border);
+
+    background-color: var(--app-bg);
+}
+
+.content {
+    padding: @gap-lg;
+    flex: 1;
+}
+
+.fieldLabel {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: @gap-sm;
+    letter-spacing: 1px;
+}
+
+.searchBox {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+    padding: @gap-md @gap-lg;
+    display: flex;
+    align-items: center;
+    gap: @gap-sm;
+}
+
+.searchIcon {
+    display: inline-flex;
+    color: var(--text-muted);
+}
+
+.searchInput {
+    --color: var(--text-primary);
+}
+
+.searching {
+    margin-top: @gap-md;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.resultList {
+    --border-top: none;
+    --border-bottom: none;
+    --border-inner: 1px solid var(--border);
+
+    margin-top: @gap-md;
+    border-radius: @radius-lg;
+    overflow: hidden;
+    background-color: var(--card-bg);
+}
+
+.resultItem {
+    --active-background-color: var(--surface-active);
+}
+
+.resultExchange {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.resultSymbol {
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.resultDesc {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: @gap-xs;
+}
+
+.selectedHint {
+    margin-top: @gap-lg;
+    color: var(--pnl-down);
+    font-size: 14px;
+}
+
+.actionBar {
+    padding: @gap-lg @gap-xl;
+    padding-bottom: @safe-bottom;
+    border-top: 1px solid var(--border);
+}
+
+.saveButton {
+    height: 44px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: @radius-lg;
+    background-color: var(--accent);
+    color: var(--text-on-accent);
+}
+
+.saveButtonDisabled {
+    background-color: var(--disabled-bg);
+    color: var(--disabled-text);
+}

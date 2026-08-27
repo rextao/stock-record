@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { useLoaderData, useNavigate, useFetcher } from "react-router";
-import { NavBar, Toast } from "antd-mobile";
-import { ChevronRight } from "lucide-react";
+import { NavBar } from "antd-mobile";
+import clsx from "clsx";
 import { SellModal } from "../../features/trade-record/components/SellModal";
 import { fetchHoldingDetail, sellByItem } from "../../api/trading";
+import styles from "./detail.module.less";
+
 // 简单的日期和价格格式化
 const formatPrice = (val: number) => val?.toFixed(2);
 const formatDateTime = (val: string) => val ? val.slice(0, 16) : '--';
+
+const pnlClass = (value: number) => (value >= 0 ? styles.up : styles.down);
 
 // 数据组装在 Worker 的 /api/holdings/:id 里完成，这里只负责取回来
 export async function clientLoader({ params, request }: { params: any, request: Request }) {
@@ -38,37 +42,42 @@ export default function HoldingsDetailRoute() {
     const renderTradeCard = (t: any) => {
         const isClosed = t.sold_quantity >= t.buy_quantity;
         const isPartial = t.sold_quantity > 0 && !isClosed;
+        const statusClass = isClosed ? styles.pillClosed : isPartial ? styles.pillPartial : styles.pillOpen;
 
         return (
-            <div key={t.id} onClick={() => navigate(`/trade/${t.id}`)} style={{ backgroundColor: '#0B0C11', border: '1px solid #1A1C24', borderRadius: '16px', padding: '16px', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <div style={{ color: '#6D6F7E', fontSize: '14px' }}>买入时间 {formatDateTime(t.buy_time)}</div>
-                    <div style={{
-                        fontSize: '12px', padding: '4px 8px', borderRadius: '6px',
-                        backgroundColor: isClosed ? 'rgba(255,255,255,0.06)' : isPartial ? 'rgba(168,85,247,0.15)' : 'rgba(34,197,94,0.15)',
-                        color: isClosed ? '#9CA3AF' : isPartial ? '#A855F7' : '#00E676'
-                    }}>
+            <div key={t.id} onClick={() => navigate(`/trade/${t.id}`)} className={styles.tradeCard}>
+                <div className={styles.tradeHeader}>
+                    <div className={styles.buyTime}>买入时间 {formatDateTime(t.buy_time)}</div>
+                    <div className={clsx(styles.pill, statusClass)}>
                         {isClosed ? '已平仓' : isPartial ? '部分平仓' : '未平仓'}
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 0' }}>
-                    <div style={{ width: '50%' }}><div style={{ fontSize: '12px', color: '#6D6F7E' }}>买入价格</div><div style={{ fontSize: '16px', color: '#F8F9FA' }}>{formatPrice(t.current_price)}</div></div>
-                    <div style={{ width: '50%' }}><div style={{ fontSize: '12px', color: '#6D6F7E' }}>买入仓位</div><div style={{ fontSize: '16px', color: '#F8F9FA' }}>{t.buy_quantity}</div></div>
+                <div className={styles.tradeGrid}>
+                    <div className={styles.gridCell}>
+                        <div className={styles.gridLabel}>买入价格</div>
+                        <div className={styles.gridValue}>{formatPrice(t.current_price)}</div>
+                    </div>
+                    <div className={styles.gridCell}>
+                        <div className={styles.gridLabel}>买入仓位</div>
+                        <div className={styles.gridValue}>{t.buy_quantity}</div>
+                    </div>
                     {!isClosed && t.sold_quantity > 0 && (
-                        <div style={{ width: '100%', fontSize: '14px', color: '#6D6F7E', marginTop: '-4px' }}>剩余仓位 {t.remaining}</div>
+                        <div className={styles.remainingRow}>剩余仓位 {t.remaining}</div>
                     )}
                 </div>
 
                 {t.sell_records.length > 0 && (
-                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #1A1C24' }}>
-                        <div style={{ fontSize: '12px', color: '#9CA3AF', marginBottom: '8px' }}>卖出记录（{t.sell_records.length}）</div>
+                    <div className={styles.sellRecords}>
+                        <div className={styles.sellRecordsTitle}>卖出记录（{t.sell_records.length}）</div>
                         {t.sell_records.map((r: any) => {
                             const pnl = (r.sell_price - t.current_price) * r.sell_quantity;
                             return (
-                                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                                    <div style={{ color: '#6D6F7E', fontSize: '12px' }}>{formatDateTime(r.sell_time)} · 仓位 {r.sell_quantity}</div>
-                                    <div style={{ color: pnl >= 0 ? '#FF5252' : '#00E676', fontSize: '14px', fontWeight: 500 }}>
+                                <div key={r.id} className={styles.sellRecordRow}>
+                                    <div className={styles.sellRecordMeta}>
+                                        {formatDateTime(r.sell_time)} · 仓位 {r.sell_quantity}
+                                    </div>
+                                    <div className={clsx(styles.sellRecordPnl, pnlClass(pnl))}>
                                         {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
                                     </div>
                                 </div>
@@ -81,38 +90,46 @@ export default function HoldingsDetailRoute() {
     };
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#000000', color: '#fff' }}>
-            <NavBar onBack={() => navigate(-1)} style={{ '--border-bottom': '1px solid #1A1C24', backgroundColor: '#000000' }}>
+        <div className={styles.page}>
+            <NavBar onBack={() => navigate(-1)} className={styles.navBar}>
                 {holding.item_name}
             </NavBar>
 
-            <div style={{ padding: '16px', paddingBottom: '80px' }}>
+            <div className={styles.content}>
                 {/* 汇总卡 */}
-                <div style={{ backgroundColor: '#0B0C11', border: '1px solid #1A1C24', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <span style={{ fontSize: '20px', fontWeight: 600 }}>{holding.item_name}</span>
+                <div className={styles.summaryCard}>
+                    <div className={styles.summaryHeader}>
+                        <span className={styles.itemName}>{holding.item_name}</span>
                         {holding.remaining_qty > 0 && (
-                            <div
-                                onClick={() => setSellHolding(holding)}
-                                style={{ padding: '6px 14px', borderRadius: '20px', border: '1px solid #00E676', backgroundColor: 'rgba(34,197,94,0.12)', color: '#00E676', fontSize: '12px', fontWeight: 500 }}
-                            >记录卖出</div>
+                            <div onClick={() => setSellHolding(holding)} className={styles.sellEntry}>
+                                记录卖出
+                            </div>
                         )}
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center' }}>
-                        <div><div style={{ fontSize: '14px', color: '#6D6F7E' }}>剩余持仓</div><div style={{ fontSize: '18px', fontWeight: 600 }}>{holding.remaining_qty}</div></div>
-                        <div><div style={{ fontSize: '14px', color: '#6D6F7E' }}>加权均价</div><div style={{ fontSize: '18px', fontWeight: 600 }}>{formatPrice(holding.weighted_avg_price)}</div></div>
-                        <div><div style={{ fontSize: '14px', color: '#6D6F7E' }}>累计盈亏</div>
-                            <div style={{ fontSize: '18px', fontWeight: 600, color: holding.realized_pnl >= 0 ? '#FF5252' : '#00E676' }}>
+                    <div className={styles.summaryStats}>
+                        <div>
+                            <div className={styles.statLabel}>剩余持仓</div>
+                            <div className={styles.statValue}>{holding.remaining_qty}</div>
+                        </div>
+                        <div>
+                            <div className={styles.statLabel}>加权均价</div>
+                            <div className={styles.statValue}>{formatPrice(holding.weighted_avg_price)}</div>
+                        </div>
+                        <div>
+                            <div className={styles.statLabel}>累计盈亏</div>
+                            <div className={clsx(styles.statValue, pnlClass(holding.realized_pnl))}>
                                 {holding.realized_pnl >= 0 ? '+' : ''}{holding.realized_pnl.toFixed(2)}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div style={{ fontSize: '16px', color: '#6D6F7E', margin: '16px 0 12px' }}>未平仓（{openTrades.length}）</div>
+                <div className={styles.sectionTitle}>未平仓（{openTrades.length}）</div>
                 {openTrades.map(renderTradeCard)}
 
-                <div style={{ fontSize: '16px', color: '#6D6F7E', margin: '24px 0 12px' }}>已平仓（{closedTrades.length}）</div>
+                <div className={clsx(styles.sectionTitle, styles.sectionTitleSpaced)}>
+                    已平仓（{closedTrades.length}）
+                </div>
                 {closedTrades.map(renderTradeCard)}
             </div>
             <SellModal

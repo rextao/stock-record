@@ -1,0 +1,62 @@
+.page {
+    padding: @gap-lg @gap-lg @page-bottom-tabbar;
+    min-height: 100vh;
+    background-color: var(--app-bg);
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: @gap-xl;
+}
+
+.groupTitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: @gap-sm;
+    margin-left: @gap-sm;
+    letter-spacing: 1px;
+}
+
+/* antd-mobile List 的令牌覆盖走类选择器，不再写行内 style */
+.card {
+    --border-top: none;
+    --border-bottom: none;
+    --border-inner: 1px solid var(--border);
+
+    border-radius: @radius-xl;
+    overflow: hidden;
+    background-color: var(--card-bg);
+    margin-bottom: @gap-xl;
+}
+
+.listItem {
+    --active-background-color: var(--surface-active);
+}
+
+.iconBox {
+    width: 32px;
+    height: 32px;
+    border-radius: @radius-md;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--accent-soft-strong);
+    color: var(--accent-purple);
+}
+
+.itemLabel {
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.themeSelector {
+    --border-radius: @radius-md;
+    --color: var(--card-bg);
+    --checked-color: var(--accent-soft-strong);
+    --text-color: var(--text-primary);
+
+    padding: @gap-md @gap-lg;
+}
+

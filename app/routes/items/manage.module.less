@@ -1,0 +1,67 @@
+.page {
+    min-height: 100vh;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+}
+
+.navBar {
+    --border-bottom: 1px solid var(--border);
+
+    background-color: var(--app-bg);
+}
+
+.content {
+    padding: @gap-lg;
+    flex: 1;
+    padding-bottom: @page-bottom-action;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: @gap-sm;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+    overflow: hidden;
+}
+
+.rowMain {
+    flex: 1;
+    padding: @gap-lg;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rowName {
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+.rowArrow {
+    display: inline-flex;
+    color: var(--text-muted);
+}
+
+.deleteButton {
+    padding: @gap-lg 20px;
+    border-left: 1px solid var(--border-divider);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pnl-up);
+}
+
+/* Dialog 里的危险操作文案 */
+.dangerText {
+    color: var(--pnl-up);
+}
+

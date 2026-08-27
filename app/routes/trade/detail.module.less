@@ -1,0 +1,152 @@
+.page {
+    min-height: 100vh;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+}
+
+.navBar {
+    --border-bottom: 1px solid var(--border);
+
+    background-color: var(--app-bg);
+}
+
+.content {
+    padding: @gap-lg;
+    padding-bottom: 80px;
+}
+
+/* 详情页的通用卡片外观，需要额外布局时与 statusCard 之类的类叠加使用 */
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-xl;
+    padding: @gap-lg;
+    margin-bottom: @gap-md;
+}
+
+.statusCard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.itemName {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.pill {
+    display: inline-block;
+    padding: @gap-xs 10px;
+    border-radius: @radius-sm;
+    font-size: 12px;
+}
+
+.pillClosed {
+    background-color: var(--pill-neutral-bg);
+    color: var(--text-secondary);
+}
+
+.pillPartial {
+    background-color: var(--pill-purple-bg);
+    color: var(--accent-purple);
+}
+
+.cardTitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: @gap-sm;
+}
+
+.infoRow {
+    display: flex;
+    justify-content: space-between;
+    padding: @gap-md 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.infoLabel {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.infoValue {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.up {
+    color: var(--pnl-up);
+}
+
+.down {
+    color: var(--pnl-down);
+}
+
+.sellButton {
+    margin-top: @gap-md;
+    height: 48px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: @radius-lg;
+    background-color: var(--pnl-down);
+    color: var(--text-on-positive);
+}
+
+.sellForm {
+    margin-top: @gap-md;
+    margin-bottom: 0;
+}
+
+.fieldLabel {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: @gap-sm;
+}
+
+.inputWrap {
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: @radius-md;
+    padding: @gap-sm @gap-md;
+    margin-bottom: @gap-lg;
+}
+
+.input {
+    --color: var(--text-primary);
+}
+
+.actions {
+    display: flex;
+    gap: @gap-md;
+}
+
+.cancelButton {
+    border: none;
+    border-radius: 10px;
+    background-color: var(--pill-neutral-bg);
+    color: var(--text-secondary);
+}
+
+.confirmButton {
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    background-color: var(--pnl-down);
+    color: var(--text-on-positive);
+}
+
+.deleteAction {
+    text-align: center;
+    padding: @gap-lg;
+    margin-top: @gap-xl;
+    color: var(--pnl-up);
+    font-size: 16px;
+}
+
+/* Dialog 里的危险操作文案 */
+.dangerText {
+    color: var(--pnl-up);
+}

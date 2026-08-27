@@ -54,6 +54,10 @@ const { count, size, warnings } = await injectManifest({
 	globPatterns: ["**/*.{js,css,html,ico,png,svg,json,woff,woff2}"],
 	globIgnores: ["sw.js", "workbox-*.js"],
 	maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+	// assets/ 下的文件名自带内容 hash，无需再挂 __WB_REVISION__ 查询串：
+	// 少一层 URL 变体，缓存命中率更高，也能直接复用 HTTP 层的 immutable 缓存
+	// 清单里的 url 是相对路径（assets/xxx-hash.js），不能只匹配带前导斜杠的形式
+	dontCacheBustURLsMatching: /(^|\/)assets\//,
 });
 
 for (const warning of warnings) console.warn("[build-sw]", warning);

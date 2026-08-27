@@ -1,7 +1,28 @@
-@primary-color: #4f46e5;
-@text-main: #0f172a;
-@text-secondary: #64748b;
-@bg-page: #f8fafc;
-@border-color: #f1f5f9;
+/**
+ * 编译期 less 变量。由 vite 的 less additionalData 自动注入到每个 .less 文件，
+ * 所以这里只能放「编译期就能定死」的东西：安全区表达式、圆角与断点等。
+ *
+ * 主题色一律不放这里 —— 见 app/styles/tokens.less 的 CSS 自定义属性。
+ */
+
+// 安全区
 @safe-bottom: env(safe-area-inset-bottom, 0px);
 @safe-top: env(safe-area-inset-top, 0px);
+
+// 圆角
+@radius-sm: 6px;
+@radius-md: 8px;
+@radius-lg: 12px;
+@radius-xl: 16px;
+@radius-pill: 20px;
+
+// 常用间距
+@gap-xs: 4px;
+@gap-sm: 8px;
+@gap-md: 12px;
+@gap-lg: 16px;
+@gap-xl: 24px;
+
+// 页面底部给 TabBar / 固定按钮留出的空间
+@page-bottom-tabbar: 100px;
+@page-bottom-action: 120px;

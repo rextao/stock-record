@@ -1,0 +1,43 @@
+.fallback {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--app-bg);
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.errorPage {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: @gap-md;
+    padding: @gap-xl;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.errorTitle {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.errorMessage {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.retryButton {
+    margin-top: @gap-sm;
+    padding: 10px 20px;
+    border-radius: @radius-md;
+    border: 1px solid var(--border-divider);
+    background-color: transparent;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+

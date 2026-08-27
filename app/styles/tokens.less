@@ -1,0 +1,120 @@
+/**
+ * 主题令牌层。
+ *
+ * 这里只放 CSS 自定义属性，不放 less 变量 —— less 变量在编译期就被求值，
+ * 无法在运行时随主题切换。主题开关复用 antd-mobile 自己的
+ * html[data-prefers-color-scheme='dark']，这样组件库内部的令牌和本项目
+ * 的令牌一次切换同步生效，不需要额外桥接。
+ *
+ * :root 是浅色基线，dark 选择器覆盖为深色。
+ */
+
+:root {
+    color-scheme: light;
+
+    /* 层次背景 */
+    --app-bg: #f5f6f8;
+    --card-bg: #ffffff;
+    --popup-bg: #ffffff;
+    --surface-active: #eceef2;
+
+    /* 描边 */
+    --border: #e5e7eb;
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --border-divider: rgba(0, 0, 0, 0.08);
+
+    /* 文字 */
+    --text-primary: #16181d;
+    --text-secondary: #5b6070;
+    --text-muted: #878b99;
+    --text-on-accent: #ffffff;
+    --text-on-positive: #ffffff;
+
+    /* 涨跌语义色（浅色底需要压暗，否则 #00E676 对比度不足） */
+    --pnl-up: #e02b2b;
+    --pnl-down: #00994d;
+    /* Canvas 面积填充色：ctx.fillStyle 需要完整颜色字符串，不能靠 opacity 叠加 */
+    --pnl-up-fill: rgba(224, 43, 43, 0.16);
+    --pnl-down-fill: rgba(0, 153, 77, 0.16);
+
+    /* 强调色 */
+    --accent: #6c5ce7;
+    --accent-purple: #8b3ff0;
+    --accent-soft: rgba(108, 92, 231, 0.08);
+    --accent-soft-strong: rgba(108, 92, 231, 0.14);
+
+    /* 状态胶囊 */
+    --pill-neutral-bg: rgba(0, 0, 0, 0.05);
+    --pill-purple-bg: rgba(139, 63, 240, 0.12);
+    --pill-success-bg: rgba(0, 153, 77, 0.12);
+
+    /* 表单 */
+    --input-bg: #ffffff;
+    --input-border: #e5e7eb;
+
+    /* 禁用态 */
+    --disabled-bg: #e5e7eb;
+    --disabled-text: #a1a5b0;
+
+    /* TabBar */
+    --tab-bg: #ffffff;
+    --tab-active: #6c5ce7;
+    --tab-inactive: #878b99;
+
+    /* 悬浮主按钮 */
+    --fab-bg: #6c5ce7;
+    --fab-shadow: 0 8px 20px rgba(91, 65, 196, 0.28);
+
+    /* Canvas 图表（JS 通过 getComputedStyle 读取） */
+    --chart-grid: rgba(0, 0, 0, 0.06);
+    --chart-muted: #878b99;
+}
+
+html[data-prefers-color-scheme='dark'] {
+    color-scheme: dark;
+
+    --app-bg: #000000;
+    --card-bg: #0b0c11;
+    --popup-bg: #12121a;
+    --surface-active: #1a1c24;
+
+    --border: #1a1c24;
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-divider: rgba(128, 128, 128, 0.15);
+
+    --text-primary: #f8f9fa;
+    --text-secondary: #9ca3af;
+    --text-muted: #6d6f7e;
+    --text-on-accent: #ffffff;
+    --text-on-positive: #000000;
+
+    --pnl-up: #ff5252;
+    --pnl-down: #00e676;
+    --pnl-up-fill: rgba(255, 82, 82, 0.16);
+    --pnl-down-fill: rgba(0, 230, 118, 0.16);
+
+    --accent: #6c5ce7;
+    --accent-purple: #a855f7;
+    --accent-soft: rgba(108, 92, 231, 0.08);
+    --accent-soft-strong: rgba(108, 92, 231, 0.15);
+
+    --pill-neutral-bg: rgba(255, 255, 255, 0.06);
+    --pill-purple-bg: rgba(168, 85, 247, 0.15);
+    --pill-success-bg: rgba(34, 197, 94, 0.15);
+
+    --input-bg: rgba(255, 255, 255, 0.04);
+    --input-border: rgba(255, 255, 255, 0.08);
+
+    --disabled-bg: #2a2c35;
+    --disabled-text: #6d6f7e;
+
+    --tab-bg: #0b0c11;
+    --tab-active: #bd83ff;
+    --tab-inactive: #6d6f7e;
+
+    --fab-bg: #6c5ce7;
+    --fab-shadow: 0 8px 20px rgba(91, 65, 196, 0.38);
+
+    --chart-grid: rgba(255, 255, 255, 0.06);
+    --chart-muted: #6b7280;
+}
