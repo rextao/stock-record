@@ -24,15 +24,10 @@
     z-index: 100;
 
     /**
-     * 底部安全区只在 standalone 下补偿。
-     *
-     * 浏览器里 Safari 自己的工具栏已经占住了 home indicator 那一条，再垫一次 env() 就是
-     * 纯空白，视觉上背景比图标高出一大截。standalone 没有工具栏，indicator 直接压在页面上，
-     * 这时才需要垫开，背景色一并延伸过去。
+     * 底部安全区。浏览器下 @safe-bottom 会被 global.less 归零（工具栏已占住 home indicator），
+     * 独立窗口下才是真实 env() 值，背景色一并延伸过去。这里不需要也不允许再判断显示模式。
      */
-    @media all and (display-mode: standalone) {
-        padding-bottom: @safe-bottom;
-    }
+    .safe-area-bottom();
 
     /**
      * 压缩 antd-mobile 默认尺寸。

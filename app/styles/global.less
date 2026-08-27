@@ -1,5 +1,25 @@
 @import './tokens.less';
 
+/**
+ * 布局契约的唯一出口：安全区补偿量。
+ *
+ * 各处一律写 var(--safe-top) / var(--safe-bottom)（less 里就是 @safe-top / @safe-bottom），
+ * 不要再各自套 @media (display-mode: ...) —— 那条查询在 iOS 桌面启动时不可靠，
+ * 真值由 viewportBootstrap 写在 html[data-display-mode] 上。
+ */
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/**
+ * 浏览器里 Safari / Chrome 自己的底部工具栏已经占住了 home indicator 那一条，
+ * 再补一次 env() 就是纯空白（表现为底栏背景比图标高出一大截）。只有独立窗口才需要补。
+ */
+html[data-display-mode='browser'] {
+    --safe-bottom: 0px;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -20,22 +40,17 @@ html, body {
 }
 
 /**
- * iOS 加到桌面（standalone）后，webview 高度与 100vh/100dvh 的换算并不总是一致，
- * 差值会在底部露出一条系统底色。把 body 钉在可视视口上，所有屏幕内部各自滚动，
- * 高度就不再依赖视口单位的计算结果。
+ * 应用外壳：一个钉在「可视视口」上的固定盒子，页面内部各自滚动。
+ *
+ * 高度只有一个来源 —— viewportBootstrap 用 visualViewport 实测出的 --app-viewport-height。
+ * 这是唯一能同时覆盖三种变化的信号：浏览器工具栏收放、独立窗口的实际 webview 高度、
+ * 以及软键盘弹出（dvh 和 position:fixed 都不会响应键盘）。--app-viewport-top 对齐 iOS
+ * 聚焦输入框时被整体上推的可视视口。没有 JS 时降级到 100dvh，仍能跑，只是不跟键盘。
  */
 body {
     position: fixed;
-    inset: 0;
-}
-
-/**
- * 浏览器里地址栏 / 工具栏会动态收放，position:fixed 的参照是 layout viewport（工具栏收起时的
- * 大视口），所以只写 inset:0 会让底部 TabBar 被工具栏盖住。100dvh 跟随可视高度，能贴住底部。
- * standalone 下反而不能用 dvh —— webview 高度与 dvh 换算有零点几像素的差，会在底部露出系统底色。
- */
-@media not all and (display-mode: standalone) {
-    body {
-        height: 100dvh;
-    }
+    top: var(--app-viewport-top, 0px);
+    left: 0;
+    width: 100%;
+    height: var(--app-viewport-height, 100dvh);
 }

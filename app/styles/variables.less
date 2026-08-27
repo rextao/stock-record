@@ -5,9 +5,15 @@
  * 主题色一律不放这里 —— 见 app/styles/tokens.less 的 CSS 自定义属性。
  */
 
-// 安全区
-@safe-bottom: env(safe-area-inset-bottom, 0px);
-@safe-top: env(safe-area-inset-top, 0px);
+/**
+ * 安全区。指向 global.less 里声明的 CSS 变量，而不是直接写 env()：
+ * env() 的取值在浏览器和独立窗口下含义不同，那层判断集中在 global.less 一处完成。
+ */
+@safe-bottom: var(--safe-bottom, 0px);
+@safe-top: var(--safe-top, 0px);
+
+// 软键盘遮挡高度，由 viewportBootstrap 写入；只有需要单独抬升的浮层才用得到
+@keyboard-inset: var(--app-keyboard-inset, 0px);
 
 /**
  * 顶部安全区补偿。
@@ -18,6 +24,11 @@
  */
 .safe-area-top() {
     padding-top: @safe-top;
+}
+
+// 底部安全区补偿。任何贴底的元素（TabBar、固定操作栏、悬浮按钮）都走这个 mixin。
+.safe-area-bottom() {
+    padding-bottom: @safe-bottom;
 }
 
 // 圆角

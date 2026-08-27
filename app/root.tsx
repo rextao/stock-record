@@ -19,6 +19,7 @@ import {
 	useThemeStore,
 } from "./common/theme/themeStore";
 import { SW_BOOTSTRAP_SCRIPT } from "./common/pwa/swBootstrap";
+import { VIEWPORT_BOOTSTRAP_SCRIPT } from "./common/viewport/viewportBootstrap";
 import styles from "./root.module.less";
 
 export const meta: MetaFunction = () => [
@@ -50,9 +51,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				<script dangerouslySetInnerHTML={{ __html: SW_BOOTSTRAP_SCRIPT }} />
 			)}
 
+			{/* 视口尺寸与显示模式的探测，同样必须在首屏绘制前跑完：外壳高度依赖它 */}
+			<script dangerouslySetInnerHTML={{ __html: VIEWPORT_BOOTSTRAP_SCRIPT }} />
+
 			<meta charSet="utf-8" />
-			{/* 1. 优化 viewport：禁止缩放，并适配刘海屏 (viewport-fit=cover) */}
-			<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+			{/**
+			 * 1. 优化 viewport：禁止缩放，适配刘海屏 (viewport-fit=cover)。
+			 * interactive-widget=resizes-content 让 Android/Chrome 弹出软键盘时收缩布局视口，
+			 * iOS 忽略该参数，那边靠 viewportBootstrap 的 visualViewport 监听兜住。
+			 */}
+			<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
 
 			{/* 2. PWA 标准清单 */}
 			<link rel="manifest" href="/manifest.json" />

@@ -81,7 +81,9 @@ SW 注册脚本内联在 `<head>`（`app/common/pwa/swBootstrap.ts`），不能�
 
 排查离线问题时注意：`Cmd+Shift+R` 强制刷新和 DevTools 的 Bypass for network 都会绕过 SW；明文 HTTP 下浏览器不注册 SW，只能在 HTTPS 或 localhost 验证。看到 Chrome 原生「您目前处于离线状态」而不是我们的兜底文案，说明请求没进 SW。
 
-iOS standalone 布局：`apple-mobile-web-app-status-bar-style` 用 `black`（不用 `black-translucent`）；`body { position: fixed; inset: 0 }`；TabBar 的安全区 padding 只在 `@media (display-mode: standalone)` 下生效。
+移动端视口只有一套契约，改布局前先读 `app/common/viewport/viewportBootstrap.ts` 的注释。要点：`apple-mobile-web-app-status-bar-style` 用 `black`（不用 `black-translucent`，否则底部露系统底色）；外壳是 `body { position: fixed }`，高度取 visualViewport 实测的 `--app-viewport-height`（降级 `100dvh`），因为 `dvh` 和 `position:fixed` 都不响应软键盘；显示模式由 JS 写在 `html[data-display-mode]` 上（`@media (display-mode: standalone)` 在 iOS 桌面启动时会误判，`navigator.standalone` 才准）。
+
+安全区一律用 `@safe-top` / `@safe-bottom`（即 `var(--safe-*)`）或 `.safe-area-top()` / `.safe-area-bottom()`。**不要在组件里再写 `env(safe-area-inset-*)` 或按显示模式分叉**：浏览器下底部工具栏已占住 home indicator，`--safe-bottom` 在 `global.less` 里被统一归零，只有独立窗口才是真实值。
 
 ## 环境变量与部署
 
