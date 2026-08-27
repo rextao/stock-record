@@ -8,7 +8,7 @@
 
 html, body {
     width: 100%;
-    height: 100dvh; /* 适配移动端动态全屏高度 */
+    height: 100%;
     overflow: hidden;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
@@ -17,4 +17,25 @@ html, body {
     /* 跟随主题令牌，防止滚动回弹时露出与主题不符的底色 */
     background-color: var(--app-bg);
     color: var(--text-primary);
+}
+
+/**
+ * iOS 加到桌面（standalone）后，webview 高度与 100vh/100dvh 的换算并不总是一致，
+ * 差值会在底部露出一条系统底色。把 body 钉在可视视口上，所有屏幕内部各自滚动，
+ * 高度就不再依赖视口单位的计算结果。
+ */
+body {
+    position: fixed;
+    inset: 0;
+}
+
+/**
+ * 浏览器里地址栏 / 工具栏会动态收放，position:fixed 的参照是 layout viewport（工具栏收起时的
+ * 大视口），所以只写 inset:0 会让底部 TabBar 被工具栏盖住。100dvh 跟随可视高度，能贴住底部。
+ * standalone 下反而不能用 dvh —— webview 高度与 dvh 换算有零点几像素的差，会在底部露出系统底色。
+ */
+@media not all and (display-mode: standalone) {
+    body {
+        height: 100dvh;
+    }
 }

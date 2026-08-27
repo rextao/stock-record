@@ -58,9 +58,15 @@ export interface HoldingSubTrade {
 export interface HoldingCard {
 	item_id: number;
 	item_name: string;
+	/** 标的代码，取行情用的是它，不是展示名 */
+	item_symbol: string;
 	remaining_qty: number;
 	weighted_avg_price: number;
 	realized_pnl: number;
+	/** 该标的最近一次卖出价；从未卖过为 null */
+	last_sell_price: number | null;
+	/** 最近一次卖出时间，与 last_sell_price 同源 */
+	last_sell_time: string | null;
 	trade_count: number;
 	sub_trades: HoldingSubTrade[];
 }

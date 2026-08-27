@@ -50,7 +50,7 @@
 		"check": "tsc && npm run build && wrangler deploy --dry-run",
 		"deploy": "npm run build && wrangler deploy",
 		"dev": "react-router dev",
-		"preview": "npm run build && wrangler dev",
+		"preview": "npm run build && node scripts/print-lan-url.mjs && wrangler dev",
 		"typecheck": "npm run typegen && tsc -b"
 	},
 	"engines": {

@@ -1,6 +1,6 @@
 import { List, Selector } from 'antd-mobile'
 import { useNavigate } from 'react-router'
-import { ListTree, ChevronRight } from 'lucide-react'
+import { ListTree, ChevronRight, Percent } from 'lucide-react'
 import { useThemeStore, type ThemeMode } from '~/common/theme/themeStore'
 import styles from './profile.module.less'
 
@@ -36,6 +36,23 @@ export default function MineRoute() {
                 </List.Item>
             </List>
 
+            <div className={styles.groupTitle}>工具</div>
+
+            <List className={styles.card}>
+                <List.Item
+                    prefix={
+                        <div className={styles.iconBox}>
+                            <Percent size={18} />
+                        </div>
+                    }
+                    onClick={() => navigate('/tools/price-change')}
+                    className={styles.listItem}
+                    arrowIcon={<ChevronRight size={18} />}
+                >
+                    <span className={styles.itemLabel}>涨跌幅计算</span>
+                </List.Item>
+            </List>
+
             <div className={styles.groupTitle}>外观</div>
 
             <div className={styles.card}>
@@ -52,4 +69,3 @@ export default function MineRoute() {
         </div>
     )
 }
-

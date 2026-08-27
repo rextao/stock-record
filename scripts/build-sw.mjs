@@ -42,6 +42,8 @@ await esbuild({
 	format: "iife",
 	platform: "browser",
 	target: "es2020",
+	// 默认的 ascii 会把中文转成 \uXXXX，SW 的 console 输出和自检页都不好读
+	charset: "utf8",
 	minify: true,
 	define: { "process.env.NODE_ENV": '"production"' },
 });

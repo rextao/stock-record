@@ -1,14 +1,39 @@
 .page {
-    min-height: 100vh;
+    min-height: 100%;
     background-color: var(--app-bg);
     padding-bottom: @page-bottom-tabbar;
 }
 
-.pageTitle {
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: @gap-lg @gap-xl;
+}
+
+.pageTitle {
     font-size: 24px;
     font-weight: 600;
     color: var(--text-primary);
+}
+
+/* 尺寸写死，图标按钮不会因为标题行高变化而抖动 */
+.headerAction {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: @radius-md;
+    background-color: var(--card-bg);
+    color: var(--text-secondary);
+
+    &:active {
+        color: var(--text-primary);
+    }
 }
 
 .list {
@@ -23,4 +48,3 @@
     overflow: hidden;
     border: 1px solid var(--border);
 }
-

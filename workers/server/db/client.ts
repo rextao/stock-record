@@ -64,8 +64,8 @@ export class TradingDB {
         }
 
         await this.db.prepare(
-            'INSERT INTO items (name, symbol, description, exchange) VALUES (?, ?, ?, ?)'
-        ).bind(item.name, item.symbol, item.description, item.exchange).run();
+            'INSERT INTO items (name, symbol, description, exchange, created_at) VALUES (?, ?, ?, ?, ?)'
+        ).bind(item.name, item.symbol, item.description, item.exchange, this.nowLocalTime()).run();
     }
 
     // 2. 删除条目 (级联删除关联的 trades 和 sell_records)
@@ -210,8 +210,8 @@ export class TradingDB {
     // ============== 聚合查询 ==============
     async getOpenHoldings(): Promise<HoldingCard[]> {
         const { results: openTrades } = await this.db
-            .prepare(`SELECT t.*, i.name as item_name FROM trades t LEFT JOIN items i ON t.item_id = i.id WHERE t.sold_quantity < t.buy_quantity`)
-            .all<Trade & { item_name: string }>();
+            .prepare(`SELECT t.*, i.name as item_name, i.symbol as item_symbol FROM trades t LEFT JOIN items i ON t.item_id = i.id WHERE t.sold_quantity < t.buy_quantity`)
+            .all<Trade & { item_name: string; item_symbol: string }>();
 
         if (openTrades.length === 0) return [];
 
@@ -233,10 +233,31 @@ export class TradingDB {
             recordsMap.get(r.trade_id)!.push(r);
         }
 
-        const grouped = new Map<number, (Trade & { item_name: string })[]>();
+        const grouped = new Map<number, (Trade & { item_name: string; item_symbol: string })[]>();
         for (const t of openTrades) {
             if (!grouped.has(t.item_id)) grouped.set(t.item_id, []);
             grouped.get(t.item_id)!.push(t);
+        }
+
+        // 最近一次卖出价：按标的取，而不是只看未平仓的那几笔 —— 最近的卖出很可能发生在一笔已经清完的仓上。
+        // 批量卖出时同一标的多条记录共享 sell_time，所以再用 id 兜底排序。
+        const itemIds = [...grouped.keys()];
+        const lastSellMap = new Map<number, { price: number; time: string }>();
+        if (itemIds.length > 0) {
+            const itemPlaceholders = itemIds.map(() => '?').join(',');
+            const { results: sells } = await this.db
+                .prepare(
+                    `SELECT t.item_id as item_id, sr.sell_price as sell_price, sr.sell_time as sell_time
+                     FROM sell_records sr JOIN trades t ON sr.trade_id = t.id
+                     WHERE t.item_id IN (${itemPlaceholders})
+                     ORDER BY sr.sell_time ASC, sr.id ASC`
+                )
+                .bind(...itemIds)
+                .all<{ item_id: number; sell_price: number; sell_time: string }>();
+            // 升序遍历，后写覆盖前写，留下的就是最后一条
+            for (const s of sells) {
+                lastSellMap.set(s.item_id, { price: s.sell_price, time: s.sell_time });
+            }
         }
 
         const result: HoldingCard[] = [];
@@ -268,9 +289,12 @@ export class TradingDB {
             result.push({
                 item_id: itemId,
                 item_name: itemTrades[0].item_name || '',
+                item_symbol: itemTrades[0].item_symbol || '',
                 remaining_qty: remainingQty,
                 weighted_avg_price: remainingQty > 0 ? weightedSum / remainingQty : 0,
                 realized_pnl: realizedPnl,
+                last_sell_price: lastSellMap.get(itemId)?.price ?? null,
+                last_sell_time: lastSellMap.get(itemId)?.time ?? null,
                 trade_count: itemTrades.length,
                 sub_trades: subTrades,
             });

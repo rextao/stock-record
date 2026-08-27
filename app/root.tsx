@@ -18,6 +18,7 @@ import {
 	readToken,
 	useThemeStore,
 } from "./common/theme/themeStore";
+import { SW_BOOTSTRAP_SCRIPT } from "./common/pwa/swBootstrap";
 import styles from "./root.module.less";
 
 export const meta: MetaFunction = () => [
@@ -42,6 +43,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 			    这段同步脚本读 localStorage 并落 data-prefers-color-scheme，避免闪白 */}
 			<script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
 
+			{/* Service Worker 注册也放在首屏同步脚本里：它不能依赖 React 挂载，
+			    否则首屏 clientLoader 一卡住就永远注册不上，设备上也就没有离线能力。
+			    dev 下 sw.js 不存在（只由 scripts/build-sw.mjs 生成），所以只在生产产物里输出 */}
+			{import.meta.env.DEV ? null : (
+				<script dangerouslySetInnerHTML={{ __html: SW_BOOTSTRAP_SCRIPT }} />
+			)}
+
 			<meta charSet="utf-8" />
 			{/* 1. 优化 viewport：禁止缩放，并适配刘海屏 (viewport-fit=cover) */}
 			<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
@@ -56,8 +64,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 			{/* 3. iOS 专属配置 */}
 			{/* 允许全屏独立运行 */}
 			<meta name="apple-mobile-web-app-capable" content="yes" />
-			{/* 状态栏样式随主题在运行时切换，这里给深色默认值 */}
-			<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+			{/**
+			 * 状态栏样式。刻意不用 black-translucent：
+			 * standalone 下它让页面铺到状态栏底下，而 iOS 给出的视口高度仍是「屏幕高 - 状态栏高」，
+			 * 于是文档比屏幕矮一截，底部露出一条系统底色（就是那条黑条），同时顶部内容被状态栏压住。
+			 * black 让 iOS 自己占住状态栏，视口高度与可用区域一致，底栏才能真正贴底。
+			 */}
+			<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 			{/* 保存在桌面时的 App 名称 */}
 			<meta name="apple-mobile-web-app-title" content="啊呜啊呜" />
 			{/* 桌面图标 (需配合下一步放置图片文件) */}
@@ -102,56 +115,9 @@ export default function App() {
 			'meta[name="apple-mobile-web-app-status-bar-style"]',
 		);
 		if (statusBar) {
-			statusBar.content = resolvedTheme === "dark" ? "black-translucent" : "default";
+			statusBar.content = resolvedTheme === "dark" ? "black" : "default";
 		}
 	}, [resolvedTheme]);
-
-	useEffect(() => {
-		if (!('serviceWorker' in navigator)) return;
-		// sw.js 只在生产构建里生成（scripts/build-sw.mjs），dev 下注册会 404
-		if (import.meta.env.DEV) return;
-
-		// 新 SW 里带 skipWaiting + clientsClaim，激活后会立刻接管本页面，同时清掉上一版
-		// 的预缓存条目。旧页面继续留在屏幕上就可能再去请求已被删除的懒加载 chunk，
-		// 离线时直接失败。所以一旦控制权易手就整页重载一次，拿到与缓存一致的版本。
-		let reloading = false;
-		const onControllerChange = () => {
-			if (reloading) return;
-			reloading = true;
-			window.location.reload();
-		};
-		// 首次安装（此前没有 controller）不需要重载，页面本来就是最新的
-		const hadController = Boolean(navigator.serviceWorker.controller);
-		if (hadController) {
-			navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
-		}
-
-		const register = () => {
-			navigator.serviceWorker
-				.register('/sw.js', { type: 'classic', scope: '/' })
-				.then((registration) => {
-					console.log('SW 注册成功，应用已具备离线访问能力:', registration.scope);
-					// 页面长期停留时也定期查一次新版本
-					setInterval(() => void registration.update(), 60 * 60 * 1000);
-				})
-				.catch((error) => {
-					console.error('SW 注册失败:', error);
-				});
-		};
-
-		if (document.readyState === 'complete') {
-			register();
-			return () => {
-				navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
-			};
-		}
-
-		window.addEventListener('load', register, { once: true });
-		return () => {
-			window.removeEventListener('load', register);
-			navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
-		};
-	}, []);
 
 	return <Outlet />;
 }

@@ -1,22 +1,76 @@
 .layout {
     display: flex;
     flex-direction: column;
-    height: 100dvh; /* 动态视口高度，适配 iOS 地址栏收起 */
+    height: 100%;
     width: 100%;
     background-color: var(--app-bg);
+    /* 顶部状态栏（standalone + black-translucent 时页面会铺到状态栏下方）由这里垫开 */
+    .safe-area-top();
 }
 
 .main {
     flex: 1;
+    /* flex 子项默认 min-height:auto，不归零的话内容会把容器撑高而不是内部滚动 */
+    min-height: 0;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     color: var(--text-primary);
 }
 
 .footer {
     border-top: 1px solid var(--border);
     background-color: var(--tab-bg);
-    /* 底部安全区由 antd-mobile 的 SafeArea 垫高，这里不手写 padding */
+    flex-shrink: 0;
     z-index: 100;
+
+    /**
+     * 底部安全区只在 standalone 下补偿。
+     *
+     * 浏览器里 Safari 自己的工具栏已经占住了 home indicator 那一条，再垫一次 env() 就是
+     * 纯空白，视觉上背景比图标高出一大截。standalone 没有工具栏，indicator 直接压在页面上，
+     * 这时才需要垫开，背景色一并延伸过去。
+     */
+    @media all and (display-mode: standalone) {
+        padding-bottom: @safe-bottom;
+    }
+
+    /**
+     * 压缩 antd-mobile 默认尺寸。
+     *
+     * 两层原因：一是它的 min-height 48px / icon 盒 24px 是按 24px 图标算的，本项目图标只有
+     * 22px；二是 postcss-px-to-viewport 会把组件库里的 px 全部换成 vw，屏幕越宽这条 bar 越高，
+     * 而图标尺寸是 JS 传的 size={22}（固定 px），于是背景越来越比内容高。
+     *
+     * 这一段挂在 .ignore-vw 上（postcss.config.js 的 selectorBlackList），命中的规则不做 px→vw
+     * 转换，尺寸就和图标用同一把尺子。footer 元素上要同时带 styles.footer 和 ignore-vw。
+     */
+    &:global(.ignore-vw) {
+        :global(.adm-tab-bar-wrap) {
+            /* 直接钉死一条 46px 的内容带，背景高度不再受组件库 padding / vw 换算影响 */
+            min-height: 0;
+            height: 46px;
+            align-items: center;
+        }
+
+        :global(.adm-tab-bar-item) {
+            padding: 0 8px;
+        }
+
+        :global(.adm-tab-bar-item-icon) {
+            height: 22px;
+            font-size: 22px;
+        }
+
+        /* 行高交给内部的 .tabTitle，避免组件库的 4vw 行高把整条撑高 */
+        :global(.adm-tab-bar-item-title) {
+            line-height: 1;
+        }
+
+        .tabTitle {
+            font-size: 11px;
+            line-height: 13px;
+        }
+    }
 }
 
 /* lucide 图标默认 color=currentColor，所以颜色交给外层 span 控制即可 */
@@ -27,8 +81,6 @@
 
 .tabTitle {
     display: block;
-    font-size: 11px;
-    margin-top: 3px;
     color: var(--tab-inactive);
 }
 
@@ -36,4 +88,3 @@
 .tabTitleActive {
     color: var(--tab-active);
 }
-

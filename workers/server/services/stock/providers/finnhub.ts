@@ -1,14 +1,12 @@
 import type {IStockProvider, StockSearchResult} from "../types";
-const quoteCache = new Map<string, { price: number; expiresAt: number }>();
 
+// 只负责取数与字段归一，缓存由外层 withStockCache 统一处理
 export class FinnhubProvider implements IStockProvider {
     private apiKey: string;
     private baseUrl = 'https://finnhub.io/api/v1';
-    private cacheTtl: number;
 
-    constructor(apiKey: string, cacheTtlSeconds: number) {
+    constructor(apiKey: string) {
         this.apiKey = apiKey;
-        this.cacheTtl = cacheTtlSeconds;
     }
 
     async search(query: string): Promise<StockSearchResult[]> {
@@ -48,17 +46,8 @@ export class FinnhubProvider implements IStockProvider {
     }
 
 
-    // 👈 新增：获取实时报价并做缓存拦截
     async getLivePrice(symbol: string): Promise<number | null> {
         if (!this.apiKey) return null;
-
-        const now = Date.now();
-        const cached = quoteCache.get(symbol);
-
-        // 命中缓存且未过期，直接返回内存数据，不发网络请求
-        if (cached && cached.expiresAt > now) {
-            return cached.price;
-        }
 
         try {
             const response = await fetch(`${this.baseUrl}/quote?symbol=${encodeURIComponent(symbol)}&token=${this.apiKey}`);
@@ -66,17 +55,9 @@ export class FinnhubProvider implements IStockProvider {
 
             const data = await response.json() as any;
 
-            // Finnhub 的 /quote 接口中，'c' 代表 current price
-            if (data && typeof data.c === 'number') {
-                const currentPrice = data.c;
-
-                // 写入缓存字典
-                quoteCache.set(symbol, {
-                    price: currentPrice,
-                    expiresAt: now + (this.cacheTtl * 1000)
-                });
-
-                return currentPrice;
+            // Finnhub 的 /quote 接口中，'c' 代表 current price；0 表示查不到这个代码
+            if (data && typeof data.c === 'number' && data.c > 0) {
+                return data.c;
             }
             return null;
         } catch (error) {

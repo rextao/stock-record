@@ -1,0 +1,132 @@
+.page {
+    height: 100%;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    /* standalone 下页面会铺到状态栏下方，顶部 NavBar 必须自己躲开 */
+    .safe-area-top();
+}
+
+.navBar {
+    --border-bottom: 1px solid var(--border);
+
+    background-color: var(--app-bg);
+    flex-shrink: 0;
+}
+
+.content {
+    padding: @gap-lg;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: @gap-md;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+}
+
+.fieldLabel {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: @gap-sm;
+}
+
+.fieldBox {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+    padding: @gap-sm @gap-lg;
+}
+
+.fieldInput {
+    --color: var(--text-primary);
+    --font-size: 16px;
+}
+
+/* 交换按钮不占一整行标签位，贴着两个输入框之间的间隙右对齐 */
+.swapButton {
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: @radius-md;
+    background-color: var(--card-bg);
+    color: var(--text-secondary);
+}
+
+.result {
+    margin-top: @gap-xl;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.resultPct {
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.2;
+    /* 数字等宽，输入过程中大字不会左右跳动 */
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+
+.resultHint {
+    margin-top: @gap-xs;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.metrics {
+    margin-top: @gap-xl;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+}
+
+.metric {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: @gap-md 0;
+
+    & + & {
+        border-left: 1px solid var(--border-divider);
+    }
+}
+
+.metricLabel {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: @gap-xs;
+}
+
+.metricValue {
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+
+.up {
+    color: var(--pnl-up);
+}
+
+.down {
+    color: var(--pnl-down);
+}

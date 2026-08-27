@@ -8,6 +8,9 @@ export interface AppEnv extends Env {
 	ASSETS: { fetch: (input: Request | URL | string) => Promise<Response> };
 	FINNHUB_API_KEY?: string;
 	QUOTE_CACHE_TTL?: string;
+	SEARCH_CACHE_TTL?: string;
+	// 行情数据源开关，对应 services/stock/providers 注册表的 key
+	STOCK_PROVIDER?: string;
 }
 
 const json = (data: unknown, status = 200) =>
@@ -71,11 +74,11 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 		if (!second && method === "GET") {
 			const rawHoldings = await db.getOpenHoldings();
 			const stockService = getStockProvider(env);
-			// 报价按标的并发拉取，provider 内部有 TTL 缓存，重复标的不会重复请求
+			// 报价按标的并发拉取，取的是标的代码（item_symbol）而不是展示名；缓存在 withStockCache 里
 			const holdings = await Promise.all(
 				rawHoldings.map(async (holding) => ({
 					...holding,
-					live_price: await stockService.getLivePrice(holding.item_name).catch(() => null),
+					live_price: await stockService.getLivePrice(holding.item_symbol).catch(() => null),
 				})),
 			);
 			return json({ holdings });
@@ -140,14 +143,71 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 		try {
 			return json({ results: await getStockProvider(env).search(q) });
 		} catch (error: any) {
+			// 这些分支必须是非 2xx：Service Worker 的 api-cache 只收 200，
+			// 否则「未配置凭证」这类响应会被当成正常结果缓存下来并在之后回放
 			if (error?.message === "MISSING_API_KEY") {
-				return json({ results: [], error: "未配置行情接口凭证，无法搜索股票" });
+				return json({ results: [], error: "未配置行情接口凭证，无法搜索股票" }, 503);
 			}
-			return json({ results: [], error: "获取数据失败，请稍后重试" });
+			return json({ results: [], error: "获取数据失败，请稍后重试" }, 502);
 		}
 	}
 
-	return fail("接口不存在", 404);
+		return fail("接口不存在", 404);
+}
+
+// 线上自检：只回布尔与长度，不回密钥本身。用于确认「secret 是否落到当前这个 Worker」
+async function handleHealth(env: AppEnv): Promise<Response> {
+	const key = env.FINNHUB_API_KEY || "";
+	let dbOk = false;
+	let dbError: string | undefined;
+	let tables: string[] = [];
+	const counts: Record<string, number | null> = {};
+
+	const count = async (sql: string) => {
+		try {
+			const row = await env.DB.prepare(sql).first<{ c: number }>();
+			return row?.c ?? null;
+		} catch {
+			return null;
+		}
+	};
+
+	try {
+		// 先确认这个 DB 绑定里到底有哪些表，再逐张数行数；
+		// 「表在但行数为 0」和「表都不存在」是两种完全不同的故障
+		const { results } = await env.DB.prepare(
+			"select name from sqlite_master where type='table' and name not like 'sqlite_%' and name not like '_cf_%' order by name",
+		).all<{ name: string }>();
+		tables = results.map((row) => row.name);
+		dbOk = true;
+	} catch (error: any) {
+		dbError = error?.message || "unknown";
+	}
+
+	if (tables.includes("items")) counts.items = await count("select count(*) as c from items");
+	if (tables.includes("trades")) {
+		counts.trades = await count("select count(*) as c from trades");
+		// 首页只渲染未平仓部分，全部卖完时首页为空但 trades 仍有数据
+		counts.openTrades = await count(
+			"select count(*) as c from trades where sold_quantity < buy_quantity",
+		);
+	}
+	if (tables.includes("sell_records")) {
+		counts.sellRecords = await count("select count(*) as c from sell_records");
+	}
+
+	return json({
+		ok: dbOk && key.length > 0,
+		hasQuoteKey: key.length > 0,
+		quoteKeyLength: key.length,
+		quoteCacheTtl: env.QUOTE_CACHE_TTL ?? null,
+		searchCacheTtl: env.SEARCH_CACHE_TTL ?? null,
+		stockProvider: env.STOCK_PROVIDER ?? "finnhub",
+		db: dbOk ? "ok" : "error",
+		dbError,
+		tables,
+		counts,
+	});
 }
 
 export default {
@@ -155,6 +215,7 @@ export default {
 		const url = new URL(request.url);
 
 		if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
+			if (url.pathname === "/api/health") return handleHealth(env);
 			try {
 				return await handleApi(request, env, url.pathname);
 			} catch (error: any) {

@@ -31,8 +31,14 @@ export function HoldingCard({ holding }: { holding: any }) {
 
             <div className={styles.summary}>
                 <div className={styles.summaryCell}>
-                    <span className={styles.summaryLabel}>剩余持仓</span>
-                    <span className={styles.summaryValue}>{holding.remaining_qty}</span>
+                    <span className={styles.summaryLabel}>最近平仓价</span>
+                    {holding.last_sell_price != null ? (
+                        <span className={clsx(styles.summaryValue, styles.weightNormal)}>
+                            {formatPrice(holding.last_sell_price)}
+                        </span>
+                    ) : (
+                        <span className={clsx(styles.summaryValue, styles.summaryEmpty)}>--</span>
+                    )}
                 </div>
                 <div className={clsx(styles.summaryCell, styles.alignCenter)}>
                     <span className={styles.summaryLabel}>加权均价</span>
@@ -111,8 +117,8 @@ export function HoldingCard({ holding }: { holding: any }) {
                                         </span>
                                     </div>
 
-                                    {/* 3. 当前浮动收益列（高亮显示 + 单仓明细） */}
-                                    <div className={clsx(styles.pnlCol, hasLive && styles.pnlColLive)}>
+                                    {/* 3. 当前浮动收益列（靠数字字号和语义色区分，不再加底色） */}
+                                    <div className={styles.pnlCol}>
                                         <span className={styles.metricLabel}>当前盈亏</span>
                                         {hasLive ? (
                                             <>
@@ -138,4 +144,3 @@ export function HoldingCard({ holding }: { holding: any }) {
         </div>
     );
 }
-

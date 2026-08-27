@@ -16,6 +16,22 @@ export function calcActualReturnPct(
   return ((actualPrice - currentPrice) / currentPrice) * 100
 }
 
+export interface PriceChange {
+  /** 绝对差值 to - from */
+  diff: number
+  /** 相对 from 的涨跌幅，百分比 */
+  pct: number
+  /** 倍数 to / from */
+  ratio: number
+}
+
+/** 两个价格之间的变化。from 为 0 或输入非法时无意义，返回 null 交给调用方展示占位 */
+export function calcPriceChange(from: number, to: number): PriceChange | null {
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from === 0) return null
+  const diff = to - from
+  return { diff, pct: (diff / from) * 100, ratio: to / from }
+}
+
 export function formatPct(value: number | null): string {
   if (value === null) return '--'
   const sign = value >= 0 ? '+' : ''

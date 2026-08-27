@@ -70,6 +70,12 @@
     &.weightNormal {
         font-weight: 500;
     }
+
+    // 从未卖出过时的占位，弱化处理，避免和真实价格抢视线
+    &.summaryEmpty {
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
 }
 
 .toggleRow {
@@ -157,15 +163,8 @@
 .pnlCol {
     display: flex;
     flex-direction: column;
-    border-radius: @radius-sm;
     min-width: 70px;
     align-items: flex-end;
-    background-color: transparent;
-
-    /* 有实时价时给一层强调底色，把当前盈亏从其他列里挑出来 */
-    &.pnlColLive {
-        background-color: var(--accent-soft);
-    }
 }
 
 .pnlAmount {
@@ -193,4 +192,3 @@
 .down {
     color: var(--pnl-down);
 }
-

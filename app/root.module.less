@@ -1,5 +1,5 @@
 .fallback {
-    min-height: 100vh;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -9,13 +9,13 @@
 }
 
 .errorPage {
-    min-height: 100vh;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: @gap-md;
-    padding: @gap-xl;
+    padding: calc(@gap-xl + @safe-top) @gap-xl calc(@gap-xl + @safe-bottom);
     background-color: var(--app-bg);
     color: var(--text-primary);
     text-align: center;
@@ -40,4 +40,3 @@
     color: var(--text-primary);
     font-size: 14px;
 }
-

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLoaderData, useNavigate, useFetcher } from "react-router";
 import { SwipeAction } from "antd-mobile";
-import { ChartNoAxesColumn } from "lucide-react";
+import { ChartNoAxesColumn, Percent } from "lucide-react";
 import { HoldingCard } from "../features/trade-record/components/HoldingCard";
 import { SellModal } from "../features/trade-record/components/SellModal";
 import { EmptyState } from "../common/components/EmptyState";
@@ -45,7 +45,19 @@ export default function HomeRoute() {
 
 	return (
 		<div className={styles.page}>
-			<div className={styles.pageTitle}>首页</div>
+			<div className={styles.header}>
+				<div className={styles.pageTitle}>首页</div>
+				{/* 涨跌幅计算用得频繁，从标题栏直达，省掉「我的 → 工具」两跳 */}
+				<button
+					type="button"
+					className={styles.headerAction}
+					onClick={() => navigate('/tools/price-change')}
+					aria-label="涨跌幅计算"
+					title="涨跌幅计算"
+				>
+					<Percent size={18} />
+				</button>
+			</div>
 
 			<div className={styles.list}>
 				{holdings.length === 0 ? (
@@ -92,4 +104,3 @@ export default function HomeRoute() {
 		</div>
 	);
 }
-

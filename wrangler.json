@@ -5,7 +5,8 @@
 	"compatibility_date": "2025-10-08",
 	"compatibility_flags": ["nodejs_compat"],
 	"dev": {
-		"port": 8788
+		"port": 8788,
+		"ip": "0.0.0.0"
 	},
 	"observability": {
 		"enabled": true
@@ -16,7 +17,8 @@
 	},
 	"upload_source_maps": true,
 	"vars": {
-		"VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare"
+		"VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare",
+		"QUOTE_CACHE_TTL": "600"
 	},
 	"d1_databases": [
 		{

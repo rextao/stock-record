@@ -1,4 +1,4 @@
-import { TabBar, SafeArea } from 'antd-mobile'
+import { TabBar } from 'antd-mobile'
 import clsx from 'clsx'
 import { Outlet, useLocation, useNavigate } from 'react-router'
 import { TAB_BAR_CONFIG } from './config/tabBarConfig'
@@ -16,7 +16,8 @@ export default function BasicLayout() {
                 <Outlet />
             </main>
 
-            <footer className={styles.footer}>
+            {/* ignore-vw：让 postcss-px-to-viewport 跳过这条 bar 的尺寸，见 BasicLayout.module.less */}
+            <footer className={clsx(styles.footer, 'ignore-vw')}>
                 <TabBar activeKey={activeKey} onChange={(key) => navigate(key)}>
                     {TAB_BAR_CONFIG.map((item) => {
                         const Icon = item.icon
@@ -38,11 +39,7 @@ export default function BasicLayout() {
                         )
                     })}
                 </TabBar>
-
-                {/* 自动垫高 iOS 底部小黑条，并继承 footer 背景色 */}
-                <SafeArea position="bottom" />
             </footer>
         </div>
     )
 }
-

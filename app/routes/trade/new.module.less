@@ -1,20 +1,26 @@
 .page {
-    min-height: 100vh;
+    height: 100%;
     background-color: var(--app-bg);
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
+    /* standalone 下页面会铺到状态栏下方，顶部 NavBar 必须自己躲开 */
+    .safe-area-top();
 }
 
 .navBar {
     --border-bottom: 1px solid var(--border);
 
     background-color: var(--app-bg);
+    flex-shrink: 0;
 }
 
 .content {
     padding: @gap-lg;
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding-bottom: @page-bottom-action;
 }
 
