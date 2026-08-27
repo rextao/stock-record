@@ -1,5 +1,14 @@
-import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
-import type { Item, Trade, SellRecord, TradeWithItem, HoldingCard, HoldingSubTrade } from '../../features/trade-record/types';
+import type {
+    Item,
+    Trade,
+    SellRecord,
+    TradeWithItem,
+    HoldingCard,
+    HoldingSubTrade,
+    HoldingDetailPayload,
+    HoldingTradeDetail,
+    TradeDetail,
+} from '../../../app/features/trade-record/types';
 
 // 你可以把这些纯计算函数放到 app/common/utils/calculations.ts 中
 // 这里为了示例完整性暂时保留简单的 mock
@@ -267,5 +276,101 @@ export class TradingDB {
             });
         }
         return result;
+    }
+
+    // 删除单笔交易（连带它的卖出记录）
+    async deleteTrade(id: number): Promise<void> {
+        await this.db.batch([
+            this.db.prepare('DELETE FROM sell_records WHERE trade_id = ?').bind(id),
+            this.db.prepare('DELETE FROM trades WHERE id = ?').bind(id),
+        ]);
+    }
+
+    // 某个标的的持仓详情：未平仓 / 已平仓两组交易 + 聚合信息
+    async getHoldingDetail(itemId: number): Promise<HoldingDetailPayload> {
+        const { results: trades } = await this.db
+            .prepare(
+                `SELECT t.*, i.name as item_name
+                 FROM trades t LEFT JOIN items i ON t.item_id = i.id
+                 WHERE t.item_id = ? ORDER BY t.buy_time DESC`
+            )
+            .bind(itemId)
+            .all<Trade & { item_name: string }>();
+
+        const { results: records } = await this.db
+            .prepare(
+                `SELECT r.* FROM sell_records r
+                 JOIN trades t ON r.trade_id = t.id
+                 WHERE t.item_id = ? ORDER BY r.sell_time ASC`
+            )
+            .bind(itemId)
+            .all<SellRecord>();
+
+        const recordsMap = new Map<number, SellRecord[]>();
+        for (const r of records) {
+            if (!recordsMap.has(r.trade_id)) recordsMap.set(r.trade_id, []);
+            recordsMap.get(r.trade_id)!.push(r);
+        }
+
+        let remainingQty = 0;
+        let weightedSum = 0;
+        let realizedPnl = 0;
+        const openTrades: HoldingTradeDetail[] = [];
+        const closedTrades: HoldingTradeDetail[] = [];
+
+        for (const t of trades) {
+            const recs = recordsMap.get(t.id) || [];
+            const profit = this.calcProfit(recs, t.current_price);
+            realizedPnl += profit;
+
+            if (t.sold_quantity < t.buy_quantity) {
+                const rem = t.buy_quantity - t.sold_quantity;
+                remainingQty += rem;
+                weightedSum += t.current_price * rem;
+                openTrades.push({ ...t, sell_records: recs, profit, remaining: rem });
+            } else {
+                closedTrades.push({ ...t, sell_records: recs, profit, remaining: 0 });
+            }
+        }
+
+        return {
+            holding: {
+                item_id: itemId,
+                item_name: trades[0]?.item_name || '未知标的',
+                remaining_qty: remainingQty,
+                weighted_avg_price: remainingQty > 0 ? weightedSum / remainingQty : 0,
+                realized_pnl: realizedPnl,
+                sub_trades: openTrades,
+            },
+            openTrades,
+            closedTrades,
+        };
+    }
+
+    // 单笔交易详情，附带派生的盈亏比例
+    async getTradeDetail(tradeId: number): Promise<TradeDetail | null> {
+        const trade = await this.db
+            .prepare(
+                `SELECT t.*, i.name as item_name FROM trades t
+                 LEFT JOIN items i ON t.item_id = i.id WHERE t.id = ?`
+            )
+            .bind(tradeId)
+            .first<Trade & { item_name: string }>();
+
+        if (!trade) return null;
+
+        const actualReturnPct =
+            trade.actual_price !== null && trade.current_price
+                ? ((trade.actual_price - trade.current_price) / trade.current_price) * 100
+                : null;
+
+        return {
+            ...trade,
+            upside_pct: calcUpsidePct(trade.current_price, trade.target_price),
+            downside_pct: calcDownsidePct(trade.current_price, trade.stop_loss_price),
+            actual_return_pct: actualReturnPct,
+            is_fully_closed: trade.sold_quantity >= trade.buy_quantity,
+            remaining: trade.buy_quantity - trade.sold_quantity,
+        };
     }
 }

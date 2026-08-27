@@ -2,55 +2,45 @@ import { useState, useEffect } from "react";
 import { useNavigate, useFetcher, Form, redirect, useActionData} from "react-router";
 import { NavBar, Button, List, Input, Toast } from "antd-mobile";
 import { Search } from "lucide-react";
-import { TradingDB } from "~/server/db/client.server";
-import { getStockProvider } from "~/server/services/stock";
+import { createItem, searchStocks } from "~/api/trading";
 
 // ==========================================
-// 1. 服务端逻辑
+// 1. 客户端数据逻辑（搜索走 fetcher.load，保存走 Form）
 // ==========================================
-export async function loader({ request, context }: { request: Request, context: any }) {
-    const url = new URL(request.url);
-    const q = url.searchParams.get("q");
+export async function clientLoader({ request }: { request: Request }) {
+    const q = new URL(request.url).searchParams.get("q");
 
     if (!q || q.length < 2) {
-        return { results: [] };
+        return { results: [] as Awaited<ReturnType<typeof searchStocks>>["results"], error: undefined };
     }
 
-    // 通过服务工厂获取股票查询实现
-    const stockService = getStockProvider(context.cloudflare.env);
-
     try {
-        const results = await stockService.search(q);
-        return { results };
+        return await searchStocks(q, { signal: request.signal });
     } catch (error: any) {
-        // 捕获 API Key 缺失错误，通知前端
-        if (error.message === "MISSING_API_KEY") {
-            return { results: [], error: "未配置行情接口凭证，无法搜索股票" };
-        }
-        return { results: [], error: "获取数据失败，请稍后重试" };
+        return { results: [], error: (error.message as string) || "获取数据失败，请稍后重试" };
     }
 }
 
-export async function action({ request, context }: { request: Request, context: any }) {
+export async function clientAction({ request }: { request: Request }) {
     const formData = await request.formData();
     const name = formData.get("name") as string;
     const symbol = formData.get("symbol") as string;
-    const description = formData.get("description") as string;
-    const exchange = formData.get("exchange") as string;
 
     if (!name || !symbol) {
         return { error: "数据不完整" };
     }
 
-    const db = new TradingDB(context.cloudflare.env.DB);
-
     try {
-        // 尝试保存
-        await db.createItem({ name, symbol, description, exchange });
+        await createItem({
+            name,
+            symbol,
+            description: (formData.get("description") as string) || "",
+            exchange: (formData.get("exchange") as string) || "",
+        });
         return redirect("/items/manage");
     } catch (error: any) {
-        // 拦截重复添加的抛错，返回给前端
-        return { error: error.message };
+        // 例如重复添加同一标的，交给前端 Toast 展示
+        return { error: error.message as string };
     }
 }
 
@@ -59,12 +49,12 @@ export async function action({ request, context }: { request: Request, context: 
 // ==========================================
 export default function NewItemRoute() {
     const navigate = useNavigate();
-    const fetcher = useFetcher<typeof loader>();
+    const fetcher = useFetcher<typeof clientLoader>();
 
     const [inputValue, setInputValue] = useState("");
     const [selectedStock, setSelectedStock] = useState<any>(null);
     // 获取表单提交 (Action) 返回的数据
-    const actionData = useActionData<typeof action>();
+    const actionData = useActionData<typeof clientAction>();
     // 提取错误信息
     const errorMsg = fetcher.data?.error;
 

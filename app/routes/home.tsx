@@ -2,62 +2,38 @@ import { useState } from "react";
 import { useLoaderData, useNavigate, useFetcher } from "react-router";
 import { SwipeAction } from "antd-mobile";
 import { ChartNoAxesColumn, Plus } from "lucide-react";
-import { TradingDB } from "../server/db/client.server";
-import { getStockProvider } from "../server/services/stock"; // 👈 引入股票服务
 import { HoldingCard } from "../features/trade-record/components/HoldingCard";
 import { SellModal } from "../features/trade-record/components/SellModal";
+import { fetchHoldings, sellByItem } from "../api/trading";
 
 // ==========================================
-// 服务端逻辑
+// 客户端数据加载（纯 CSR，全部走 /api）
 // ==========================================
-export async function loader({ context }: { context: any }) {
-	const db = new TradingDB(context.cloudflare.env.DB);
-	const rawHoldings = await db.getOpenHoldings();
-
-	// 初始化股票服务
-	const stockService = getStockProvider(context.cloudflare.env);
-
-	// 遍历所有持仓，并发拉取实时股价（得益于底层的缓存机制，相同的标的不会重复请求）
-	const holdings = await Promise.all(
-		rawHoldings.map(async (holding) => {
-			// 此处的 item_name 一般就是 AAPL 等代码
-			const livePrice = await stockService.getLivePrice(holding.item_name);
-			return {
-				...holding,
-				live_price: livePrice
-			};
-		})
-	);
-
-	return { holdings };
+export async function clientLoader({ request }: { request: Request }) {
+	return fetchHoldings({ signal: request.signal });
 }
 
-export async function action({ request, context }: { request: Request, context: any }) {
-	// 这里的 action 保持之前的卖出逻辑不变
+export async function clientAction({ request }: { request: Request }) {
 	const formData = await request.formData();
-	const intent = formData.get("intent");
+	if (formData.get("intent") !== "sell") return null;
 
-	if (intent === "sell") {
-		const itemId = Number(formData.get("itemId"));
-		const price = Number(formData.get("price"));
-		const qty = Number(formData.get("qty"));
-
-		const db = new TradingDB(context.cloudflare.env.DB);
-		try {
-			await db.recordSellByItem(itemId, price, qty);
-			return { success: true };
-		} catch (error: any) {
-			return { error: error.message };
-		}
+	try {
+		await sellByItem({
+			itemId: Number(formData.get("itemId")),
+			price: Number(formData.get("price")),
+			qty: Number(formData.get("qty")),
+		});
+		return { success: true };
+	} catch (error: any) {
+		return { error: error.message as string };
 	}
-	return null;
 }
 
 // ==========================================
 // 客户端组件
 // ==========================================
 export default function HomeRoute() {
-	const loaderData = useLoaderData<typeof loader>();
+	const loaderData = useLoaderData<typeof clientLoader>();
 	const holdings = loaderData?.holdings || [];
 
 	const navigate = useNavigate();

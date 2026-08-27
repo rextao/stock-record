@@ -1,61 +1,41 @@
 import { useState } from "react";
 import { useLoaderData, useNavigate, useFetcher } from "react-router";
 import { NavBar, Input, Button, Dialog, Toast } from "antd-mobile";
-import { TradingDB } from "../../server/db/client.server";
+import { deleteTrade, fetchTradeDetail, sellTrade } from "../../api/trading";
 
 const formatPrice = (val: number) => val?.toFixed(2);
 const formatPct = (val: number) => `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
 const formatDateTime = (val: string) => val ? val.slice(0, 16) : '--';
 
-export async function loader({ params, context }: { params: any, context: any }) {
-    const tradeId = Number(params.id);
-    const db = context.cloudflare.env.DB;
-
-    const trade = await db.prepare(`
-        SELECT t.*, i.name as item_name FROM trades t 
-        LEFT JOIN items i ON t.item_id = i.id WHERE t.id = ?
-    `).bind(tradeId).first();
-
-    if (!trade) throw new Response("Not Found", { status: 404 });
-
-    const totalSoldPct = trade.actual_price !== null && trade.current_price
-        ? ((trade.actual_price - trade.current_price) / trade.current_price) * 100 : null;
-
-    const enrichedTrade = {
-        ...trade,
-        upside_pct: ((trade.target_price - trade.current_price) / trade.current_price) * 100,
-        downside_pct: ((trade.current_price - trade.stop_loss_price) / trade.current_price) * 100,
-        actual_return_pct: totalSoldPct,
-        is_fully_closed: trade.sold_quantity >= trade.buy_quantity,
-        remaining: trade.buy_quantity - trade.sold_quantity
-    };
-
-    return { trade: enrichedTrade };
+export async function clientLoader({ params, request }: { params: any, request: Request }) {
+    return fetchTradeDetail(Number(params.id), { signal: request.signal });
 }
 
-export async function action({ request, context }: { request: Request, context: any }) {
+export async function clientAction({ request }: { request: Request }) {
     const formData = await request.formData();
     const intent = formData.get("intent");
     const tradeId = Number(formData.get("tradeId"));
-    const db = new TradingDB(context.cloudflare.env.DB);
 
-    if (intent === "sell") {
-        const price = Number(formData.get("price"));
-        const qty = Number(formData.get("qty"));
-        await db.recordSell(tradeId, price, qty);
-        return { success: true };
-    }
+    try {
+        if (intent === "sell") {
+            return await sellTrade(tradeId, {
+                price: Number(formData.get("price")),
+                qty: Number(formData.get("qty")),
+            });
+        }
 
-    if (intent === "delete") {
-        await db.deleteTrade(tradeId);
-        return { deleted: true };
+        if (intent === "delete") {
+            return await deleteTrade(tradeId);
+        }
+    } catch (error: any) {
+        return { error: error.message as string };
     }
 
     return null;
 }
 
 export default function TradeDetailRoute() {
-    const { trade } = useLoaderData<typeof loader>();
+    const { trade } = useLoaderData<typeof clientLoader>();
     const navigate = useNavigate();
     const fetcher = useFetcher();
 
@@ -69,8 +49,14 @@ export default function TradeDetailRoute() {
         const price = parseFloat(sellPrice);
         const qty = parseFloat(sellQty);
 
-        if (!price || price <= 0) return Toast.show("请输入有效的实际价格");
-        if (!qty || qty <= 0 || qty > trade.remaining) return Toast.show("卖出数量无效或超过剩余持仓");
+        if (!price || price <= 0) {
+            Toast.show("请输入有效的实际价格");
+            return;
+        }
+        if (!qty || qty <= 0 || qty > trade.remaining) {
+            Toast.show("卖出数量无效或超过剩余持仓");
+            return;
+        }
 
         fetcher.submit(
             { intent: "sell", tradeId: trade.id.toString(), price: String(price), qty: String(qty) },

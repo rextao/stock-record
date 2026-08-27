@@ -2,89 +2,34 @@ import { useState } from "react";
 import { useLoaderData, useNavigate, useFetcher } from "react-router";
 import { NavBar, Toast } from "antd-mobile";
 import { ChevronRight } from "lucide-react";
-import { TradingDB } from "../../server/db/client.server";
 import { SellModal } from "../../features/trade-record/components/SellModal";
+import { fetchHoldingDetail, sellByItem } from "../../api/trading";
 // 简单的日期和价格格式化
 const formatPrice = (val: number) => val?.toFixed(2);
 const formatDateTime = (val: string) => val ? val.slice(0, 16) : '--';
 
-export async function loader({ params, context }: { params: any, context: any }) {
-    const itemId = Number(params.id);
-    const db = context.cloudflare.env.DB; // 直接使用 D1 实例
-
-
-    // 1. 获取该标的下的所有交易
-    const { results: trades } = await db.prepare(`
-        SELECT t.*, i.name as item_name 
-        FROM trades t LEFT JOIN items i ON t.item_id = i.id 
-        WHERE t.item_id = ? ORDER BY t.buy_time DESC
-    `).bind(itemId).all();
-
-    // 2. 获取该标的下的所有卖出记录
-    const { results: records } = await db.prepare(`
-        SELECT r.* FROM sell_records r
-        JOIN trades t ON r.trade_id = t.id
-        WHERE t.item_id = ? ORDER BY r.sell_time ASC
-    `).bind(itemId).all();
-
-    // 3. 在服务端完成数据组装 (对应原有的 getHoldingsByItem 逻辑)
-    const recordsMap = new Map();
-    records.forEach((r: any) => {
-        if (!recordsMap.has(r.trade_id)) recordsMap.set(r.trade_id, []);
-        recordsMap.get(r.trade_id).push(r);
-    });
-
-    let remainingQty = 0;
-    let weightedSum = 0;
-    let realizedPnl = 0;
-    const openTrades: any[] = [];
-    const closedTrades: any[] = [];
-
-    const enrichedTrades = trades.map((t: any) => {
-        const recs = recordsMap.get(t.id) || [];
-        const profit = recs.reduce((sum: number, r: any) => sum + (r.sell_price - t.current_price) * r.sell_quantity, 0);
-        realizedPnl += profit;
-
-        if (t.sold_quantity < t.buy_quantity) {
-            const rem = t.buy_quantity - t.sold_quantity;
-            remainingQty += rem;
-            weightedSum += t.current_price * rem;
-            openTrades.push({ ...t, sell_records: recs, profit, remaining: rem });
-        } else {
-            closedTrades.push({ ...t, sell_records: recs, profit, remaining: 0 });
-        }
-        return t;
-    });
-
-    const holding = {
-        item_id: itemId,
-        item_name: trades[0]?.item_name || '未知标的',
-        remaining_qty: remainingQty,
-        weighted_avg_price: remainingQty > 0 ? weightedSum / remainingQty : 0,
-        realized_pnl: realizedPnl,
-        sub_trades: openTrades // 给卖出弹窗用
-    };
-
-    return { holding, openTrades, closedTrades };
+// 数据组装在 Worker 的 /api/holdings/:id 里完成，这里只负责取回来
+export async function clientLoader({ params, request }: { params: any, request: Request }) {
+    return fetchHoldingDetail(Number(params.id), { signal: request.signal });
 }
 
-export async function action({ request, context }: { request: Request, context: any }) {
+export async function clientAction({ request }: { request: Request }) {
     const formData = await request.formData();
-    const itemId = Number(formData.get("itemId"));
-    const price = Number(formData.get("price"));
-    const qty = Number(formData.get("qty"));
 
-    const db = new TradingDB(context.cloudflare.env.DB);
     try {
-        await db.recordSellByItem(itemId, price, qty);
+        await sellByItem({
+            itemId: Number(formData.get("itemId")),
+            price: Number(formData.get("price")),
+            qty: Number(formData.get("qty")),
+        });
         return { success: true };
     } catch (error: any) {
-        return { error: error.message };
+        return { error: error.message as string };
     }
 }
 
 export default function HoldingsDetailRoute() {
-    const { holding, openTrades, closedTrades } = useLoaderData<typeof loader>();
+    const { holding, openTrades, closedTrades } = useLoaderData<typeof clientLoader>();
     const navigate = useNavigate();
     const [sellHolding, setSellHolding] = useState<any>(null);
     const fetcher = useFetcher();

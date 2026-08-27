@@ -1,29 +1,27 @@
 import { useLoaderData, useNavigate, useFetcher } from "react-router";
 import { NavBar, Dialog, Toast } from "antd-mobile";
 import { ChevronRight, Trash2, ListTree, Plus } from "lucide-react";
-import { TradingDB } from "../../server/db/client.server";
+import { deleteItem, fetchItems } from "../../api/trading";
 
 // ==========================================
-// 1. 服务端逻辑 (运行在 Cloudflare Worker)
+// 1. 客户端数据逻辑（请求 Worker 上的 /api）
 // ==========================================
 
-// Loader: 页面加载时获取所有条目
-export async function loader({ context }: { context: any }) {
-    const db = new TradingDB(context.cloudflare.env.DB);
-    const items = await db.getAllItems();
-    return { items };
+export async function clientLoader({ request }: { request: Request }) {
+    return fetchItems({ signal: request.signal });
 }
 
-// Action: 处理删除请求
-export async function action({ request, context }: { request: Request, context: any }) {
+export async function clientAction({ request }: { request: Request }) {
     const formData = await request.formData();
     const intent = formData.get("intent");
     const id = Number(formData.get("id"));
 
     if (intent === "delete" && id) {
-        const db = new TradingDB(context.cloudflare.env.DB);
-        await db.deleteItem(id);
-        return { success: true, deletedId: id };
+        try {
+            return await deleteItem(id);
+        } catch (error: any) {
+            return { error: error.message as string };
+        }
     }
 
     return { error: "未知操作" };
@@ -36,7 +34,7 @@ export async function action({ request, context }: { request: Request, context: 
 export default function ItemsManageRoute() {
     const navigate = useNavigate();
     // 拿到 loader 返回的数据
-    const { items } = useLoaderData<typeof loader>();
+    const { items } = useLoaderData<typeof clientLoader>();
     // fetcher 用于在不引起页面完整刷新的情况下提交 action (比如删除)
     const fetcher = useFetcher();
 

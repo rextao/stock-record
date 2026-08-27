@@ -35,8 +35,14 @@ export function SellModal({
         const price = parseFloat(sellPrice);
         const qty = parseFloat(sellQty);
 
-        if (!price || price <= 0) return Toast.show('请输入有效的卖出价格');
-        if (!qty || qty <= 0 || qty > holding.remaining_qty) return Toast.show(`数量需在 0~${holding.remaining_qty} 之间`);
+        if (!price || price <= 0) {
+            Toast.show('请输入有效的卖出价格');
+            return;
+        }
+        if (!qty || qty <= 0 || qty > holding.remaining_qty) {
+            Toast.show(`数量需在 0~${holding.remaining_qty} 之间`);
+            return;
+        }
 
         onConfirm(price, qty);
     };

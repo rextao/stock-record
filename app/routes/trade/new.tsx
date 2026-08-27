@@ -1,41 +1,42 @@
 import { useState } from "react";
 import { useLoaderData, useNavigate, useSubmit, redirect } from "react-router";
 import { NavBar, Input, TextArea, Button, Toast } from "antd-mobile";
-import { TradingDB } from "../../server/db/client.server";
+import { createTrade, fetchItems } from "../../api/trading";
 
 // ==========================================
-// 1. 服务端逻辑
+// 1. 客户端数据逻辑
 // ==========================================
-export async function loader({ context }: { context: any }) {
+export async function clientLoader({ request }: { request: Request }) {
     // 加载用户已经创建的所有标的（items）供选择
-    const db = new TradingDB(context.cloudflare.env.DB);
-    const items = await db.getAllItems();
-    return { items };
+    return fetchItems({ signal: request.signal });
 }
 
-export async function action({ request, context }: { request: Request, context: any }) {
+export async function clientAction({ request }: { request: Request }) {
     const formData = await request.formData();
 
-    const item_id = Number(formData.get("itemId"));
-    const current_price = Number(formData.get("currentPrice"));
-    const target_price = Number(formData.get("targetPrice"));
-    const stop_loss_price = Number(formData.get("stopLossPrice"));
-    const buy_quantity = Number(formData.get("buyQuantity"));
-    const notes = formData.get("notes") as string;
+    const itemId = Number(formData.get("itemId"));
+    const currentPrice = Number(formData.get("currentPrice"));
+    const targetPrice = Number(formData.get("targetPrice"));
+    const stopLossPrice = Number(formData.get("stopLossPrice"));
+    const buyQuantity = Number(formData.get("buyQuantity"));
+    const notes = (formData.get("notes") as string) || "";
 
-    if (!item_id || !current_price || !target_price || !stop_loss_price || !buy_quantity) {
+    if (!itemId || !currentPrice || !targetPrice || !stopLossPrice || !buyQuantity) {
         return { error: "核心数据不完整" };
     }
 
-    const db = new TradingDB(context.cloudflare.env.DB);
-    await db.createTrade({
-        item_id,
-        current_price,
-        target_price,
-        stop_loss_price,
-        buy_quantity,
-        notes: notes.trim() || undefined,
-    });
+    try {
+        await createTrade({
+            itemId,
+            currentPrice,
+            targetPrice,
+            stopLossPrice,
+            buyQuantity,
+            notes: notes.trim() || undefined,
+        });
+    } catch (error: any) {
+        return { error: error.message as string };
+    }
 
     // 录入成功后，回到首页看盘
     return redirect("/");
@@ -49,7 +50,7 @@ export async function action({ request, context }: { request: Request, context: 
 const formatPct = (val: number) => `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
 
 export default function NewTradeRoute() {
-    const { items } = useLoaderData<typeof loader>();
+    const { items } = useLoaderData<typeof clientLoader>();
     const navigate = useNavigate();
     const submit = useSubmit();
 
@@ -81,9 +82,18 @@ export default function NewTradeRoute() {
 
     // 提交处理
     const handleSave = () => {
-        if (!selectedItemId) return Toast.show("请选择标的条目");
-        if (!current || !target || !stopLoss) return Toast.show("请填写完整的价格信息");
-        if (!buyQuantity || parseFloat(buyQuantity) <= 0) return Toast.show("请输入买入数量");
+        if (!selectedItemId) {
+            Toast.show("请选择标的条目");
+            return;
+        }
+        if (!current || !target || !stopLoss) {
+            Toast.show("请填写完整的价格信息");
+            return;
+        }
+        if (!buyQuantity || parseFloat(buyQuantity) <= 0) {
+            Toast.show("请输入买入数量");
+            return;
+        }
 
         // 组装 formData 交给 action 处理
         submit(

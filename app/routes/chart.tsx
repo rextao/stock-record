@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 import { useLoaderData } from 'react-router'
 import { Popup, Calendar } from 'antd-mobile'
 import { ChartNoAxesColumn } from 'lucide-react'
-import { TradingDB } from '../server/db/client.server'
 import PnlTrendChart from '../features/stock-chart/components/PnlTrendChart'
+import { fetchTrades } from '../api/trading'
 
 // 直接使用纯前端复用的计算库
 import {
@@ -24,20 +24,18 @@ const formatDateStr = (d: Date) => {
 };
 
 // ==========================================
-// 服务端逻辑：一次性拉取所有交易及卖出记录
+// 客户端数据加载：一次性拉取所有交易及卖出记录
 // ==========================================
-export async function loader({ context }: { context: any }) {
-    const db = new TradingDB(context.cloudflare.env.DB);
-    // getAllTrades 会将对应的 sell_records 也带出来
-    const trades = await db.getAllTrades();
-    return { trades };
+export async function clientLoader({ request }: { request: Request }) {
+    // /api/trades 会将对应的 sell_records 也带出来
+    return fetchTrades({ signal: request.signal });
 }
 
 // ==========================================
 // 客户端组件
 // ==========================================
 export default function ChartRoute() {
-    const loaderData = useLoaderData<typeof loader>();
+    const loaderData = useLoaderData<typeof clientLoader>();
     const trades = loaderData?.trades || [];
 
     const [rangeKey, setRangeKey] = useState<ChartRangeKey>('all');

@@ -4,8 +4,15 @@
 	"main": "./workers/app.ts",
 	"compatibility_date": "2025-10-08",
 	"compatibility_flags": ["nodejs_compat"],
+	"dev": {
+		"port": 8788
+	},
 	"observability": {
 		"enabled": true
+	},
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist/client"
 	},
 	"upload_source_maps": true,
 	"vars": {
