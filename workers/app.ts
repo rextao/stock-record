@@ -1,5 +1,7 @@
 import { TradingDB } from "./server/db/client";
 import { getStockProvider } from "./server/services/stock";
+import { getStockHistoryService } from "./server/services/stock/history";
+import { DEFAULT_HISTORY_RANGE, isHistoryRange } from "../app/features/stock-chart/types";
 
 // 应用是纯 CSR 的 SPA，Worker 只做两件事：提供 /api JSON 接口、把其余路径回退到 index.html
 export interface AppEnv extends Env {
@@ -9,6 +11,7 @@ export interface AppEnv extends Env {
 	FINNHUB_API_KEY?: string;
 	QUOTE_CACHE_TTL?: string;
 	SEARCH_CACHE_TTL?: string;
+	HISTORY_CACHE_TTL?: string;
 	// 行情数据源开关，对应 services/stock/providers 注册表的 key
 	STOCK_PROVIDER?: string;
 }
@@ -36,6 +39,15 @@ async function readPayload(request: Request): Promise<Record<string, unknown>> {
 
 const num = (value: unknown) => Number(value);
 const str = (value: unknown) => (value == null ? "" : String(value));
+
+// 路径里的标的代码可能带 %2F 之类的转义，解不开就按原样用
+function decodeSegment(segment: string): string {
+	try {
+		return decodeURIComponent(segment).trim();
+	} catch {
+		return segment.trim();
+	}
+}
 
 async function handleApi(request: Request, env: AppEnv, pathname: string): Promise<Response> {
 	const db = new TradingDB(env.DB);
@@ -76,10 +88,19 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 			const stockService = getStockProvider(env);
 			// 报价按标的并发拉取，取的是标的代码（item_symbol）而不是展示名；缓存在 withStockCache 里
 			const holdings = await Promise.all(
-				rawHoldings.map(async (holding) => ({
-					...holding,
-					live_price: await stockService.getLivePrice(holding.item_symbol).catch(() => null),
-				})),
+				rawHoldings.map(async (holding) => {
+					// getQuote 内部已经吞掉异常，额外的 catch 只防御意料外的抛出
+					const quote = await stockService
+						.getQuote(holding.item_symbol)
+						.catch(() => ({ price: null, fetchedAt: Date.now(), error: "QUOTE_FAILED" }));
+					return {
+						...holding,
+						live_price: quote.price,
+						// 抓取时刻交给前端判断「旧不旧」，异常原因用来区分「查不到」和「服务挂了」
+						live_price_at: quote.fetchedAt,
+						live_price_error: quote.error,
+					};
+				}),
 			);
 			return json({ holdings });
 		}
@@ -149,6 +170,46 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 				return json({ results: [], error: "未配置行情接口凭证，无法搜索股票" }, 503);
 			}
 			return json({ results: [], error: "获取数据失败，请稍后重试" }, 502);
+		}
+	}
+
+	// ---------- 单标的报价（首页卡片的刷新按钮） ----------
+	// 单标的粒度而不是整表刷新：Finnhub 免费额度 60 次/分钟，一次点击只花一次配额
+	if (resource === "quotes" && second && !third && method === "GET") {
+		const symbol = decodeSegment(second);
+		if (!symbol) return fail("缺少标的代码");
+
+		const force = new URL(request.url).searchParams.get("refresh") === "1";
+		const quote = await getStockProvider(env).getQuote(symbol, { force });
+		// 取不到价格时返回 502：SW 的 api-cache 只收 200，异常结果不能被缓存回放
+		if (quote.price == null) {
+			const message =
+				quote.error === "NO_QUOTE" ? "未取到该标的报价" : "行情接口异常，请稍后重试";
+			return json({ symbol, price: null, fetchedAt: quote.fetchedAt, reason: quote.error, error: message }, 502);
+		}
+		return json({ symbol, ...quote });
+	}
+
+	// ---------- 历史日线（走势图） ----------
+	// 数据源是 Yahoo，与报价的 Finnhub 各走各的：Finnhub 免费档没有 candle 权限
+	if (resource === "history" && second && !third && method === "GET") {
+		const symbol = decodeSegment(second);
+		if (!symbol) return fail("缺少标的代码");
+
+		const rangeParam = new URL(request.url).searchParams.get("range") || DEFAULT_HISTORY_RANGE;
+		if (!isHistoryRange(rangeParam)) return fail("不支持的时间区间");
+
+		try {
+			const history = await getStockHistoryService(env).getHistory(symbol, rangeParam);
+			// 空序列同样按异常处理：SW 的 api-cache 只收 200，空曲线不能被缓存回放
+			if (history.candles.length === 0) {
+				return json({ symbol, range: rangeParam, candles: [], error: "未取到该标的历史数据" }, 502);
+			}
+			return json(history);
+		} catch (error: any) {
+			const message =
+				error?.message === "NO_HISTORY" ? "未取到该标的历史数据" : "历史行情接口异常，请稍后重试";
+			return json({ symbol, range: rangeParam, candles: [], error: message }, 502);
 		}
 	}
 

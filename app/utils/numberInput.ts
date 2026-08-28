@@ -16,3 +16,15 @@ export const DECIMAL_INPUT_PROPS = {
 	inputMode: 'decimal' as const,
 	pattern: '[0-9]*[.,]?[0-9]*',
 }
+
+/** 只保留数字，用于股数这类整数输入 */
+export function sanitizeIntegerInput(raw: string): string {
+	return raw.replace(/\D/g, '')
+}
+
+/** 整数输入框的通用属性：弹纯数字键盘，连小数点都不给 */
+export const INTEGER_INPUT_PROPS = {
+	type: 'text' as const,
+	inputMode: 'numeric' as const,
+	pattern: '[0-9]*',
+}

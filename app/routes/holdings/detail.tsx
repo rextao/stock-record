@@ -91,7 +91,8 @@ export default function HoldingsDetailRoute() {
 
     return (
         <div className={styles.page}>
-            <NavBar onBack={() => navigate(-1)} className={styles.navBar}>
+            {/* 入口只有首页的持仓卡片，直接回首页，冷启动落在这个页面时也有确定的去处 */}
+            <NavBar onBack={() => navigate("/", { replace: true })} className={styles.navBar}>
                 {holding.item_name}
             </NavBar>
 

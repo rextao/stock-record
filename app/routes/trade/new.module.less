@@ -20,8 +20,15 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    /* overflow-y 一旦不是 visible，x 方向的 visible 会被浏览器提升成 auto；这里明确禁掉横向滚动 */
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     padding-bottom: @page-bottom-action;
+}
+
+/* 键盘展开时给它让位，让价格区能滚到键盘上方 */
+.contentKeypadOpen {
+    padding-bottom: calc(@keypad-body-height + @safe-bottom + @gap-lg);
 }
 
 .sectionTitle {
@@ -66,28 +73,93 @@
     color: var(--text-on-accent);
 }
 
-.formRows {
+/*
+ * 四个价格字段排 2×2。股价不会很长，一项独占一行纯属浪费屏幕。
+ *
+ * 轨道必须写 minmax(0, 1fr)：1fr 的下限是 auto，也就是内容的 min-content，
+ * 原生 input 自带 size=20 的固有宽度，两列加起来直接把页面横向撑开。
+ */
+.priceGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: @gap-sm;
+}
+
+/* 单元格是 button 而不是 input：见 NumericKeypad 的注释，纯数字字段不让原生焦点介入 */
+.gridCell {
     display: flex;
-    flex-direction: column;
-    gap: @gap-lg;
-}
-
-.fieldLabel {
-    font-size: 14px;
-    color: var(--text-secondary);
-    margin-bottom: @gap-sm;
-}
-
-.fieldBox {
+    min-width: 0;
+    align-items: center;
+    gap: @gap-sm;
+    height: 48px;
+    padding: 0 @gap-md;
     background-color: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: @radius-lg;
-    padding: @gap-sm @gap-lg;
+    font-family: inherit;
+    text-align: left;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.field {
-    --color: var(--text-primary);
-    --font-size: 16px;
+.gridCellActive {
+    border-color: var(--accent);
+}
+
+.cellLabel {
+    flex-shrink: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.cellRequired {
+    margin-left: 2px;
+    color: var(--pnl-up);
+}
+
+.cellValue {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    overflow: hidden;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+
+.cellPlaceholder {
+    color: var(--text-muted);
+}
+
+/* 自绘光标：原生焦点不参与了，选中态得自己给出可见反馈 */
+.caret {
+    flex-shrink: 0;
+    width: 2px;
+    height: 18px;
+    margin-left: 2px;
+    background-color: var(--accent);
+    animation: caretBlink 1s step-end infinite;
+}
+
+@keyframes caretBlink {
+    50% {
+        opacity: 0;
+    }
+}
+
+.barMetric {
+    display: inline-flex;
+    align-items: center;
+    gap: @gap-xs;
+}
+
+.barMetricValue {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
 }
 
 .notesBox {
@@ -145,12 +217,24 @@
     z-index: 90;
 }
 
-.saveButton {
+/*
+ * 主按钮必须写成「加一层父选择器」+「颜色走 --adm-button-* 变量」，别改回 .saveButton { background-color }。
+ * antd-mobile 的 .adm-button 自己声明了 background-color / border / height，而它的样式表在运行时
+ * 晚于路由 CSS 插入（build 产物 manifest 里路由 css 排在 antd chunk 前面），同为单类选择器时后来的胜出，
+ * 于是我们写的紫色整条被吃掉，按钮退回 antd 默认的浅色描边样式 —— 看起来像「取消」而不是「确认」。
+ * 应对：选择器多一层 .actionBar 抬权重；颜色用 antd 预留的 --adm-button-* 钩子（antd 自己从不声明
+ * 这几个变量，只在 var() 的兜底链里读它们，所以完全不受样式表插入顺序影响）。
+ */
+.actionBar .saveButton {
+    --adm-button-background-color: var(--btn-primary-bg);
+    --adm-button-text-color: var(--btn-primary-text);
+    --adm-button-border-radius: @radius-lg;
+    --adm-button-border-width: 0px;
     height: 48px;
     font-size: 16px;
     font-weight: 600;
-    border: none;
-    border-radius: @radius-lg;
-    background-color: var(--accent);
-    color: var(--text-on-accent);
+
+    &:active {
+        --adm-button-background-color: var(--btn-primary-bg-active);
+    }
 }

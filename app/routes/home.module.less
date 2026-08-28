@@ -1,7 +1,35 @@
 .page {
     min-height: 100%;
     background-color: var(--app-bg);
-    padding-bottom: @page-bottom-tabbar;
+    display: flex;
+    flex-direction: column;
+}
+
+/**
+ * 下拉刷新的手势区域必须铺满整屏。
+ *
+ * antd-mobile 的 PullToRefresh 把 useDrag 绑在自己的根节点上（target: elementRef），
+ * 而那个节点默认只有内容高度：只有一张卡片时，卡片下方的空白根本不在它里面，
+ * 从空白处下拉自然没反应（卡片多到撑满屏幕就「好了」，纯属巧合）。
+ * 这里把它和内部的 content 一路撑到 flex:1，空白区域也归它管。
+ * 注意不要给它们加 min-height:0，否则卡片多时无法把 .page 顶高、外层 .main 就不滚了。
+ */
+.scrollArea {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    :global(.adm-pull-to-refresh) {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    :global(.adm-pull-to-refresh-content) {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
 }
 
 .header {
@@ -37,7 +65,8 @@
 }
 
 .list {
-    padding: 0 @gap-lg;
+    flex: 1;
+    padding: 0 @gap-lg @page-bottom-tabbar;
     display: flex;
     flex-direction: column;
     gap: @gap-lg;

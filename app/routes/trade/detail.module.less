@@ -93,15 +93,24 @@
     color: var(--pnl-down);
 }
 
-.sellButton {
+/*
+ * 选择器权重与 --adm-button-* 钩子的原因见 app/routes/trade/new.module.less 里的注释：
+ * 单类选择器直接写 background-color 会被后插入的 antd-mobile 样式表吃掉。
+ * 配色也从原来的涨跌绿改成主按钮色 —— 绿色在这里是「跌」的语义，用作确认按钮会打架。
+ */
+.content .sellButton {
+    --adm-button-background-color: var(--btn-primary-bg);
+    --adm-button-text-color: var(--btn-primary-text);
+    --adm-button-border-radius: @radius-lg;
+    --adm-button-border-width: 0px;
     margin-top: @gap-md;
     height: 48px;
     font-size: 16px;
     font-weight: 600;
-    border: none;
-    border-radius: @radius-lg;
-    background-color: var(--pnl-down);
-    color: var(--text-on-positive);
+
+    &:active {
+        --adm-button-background-color: var(--btn-primary-bg-active);
+    }
 }
 
 .sellForm {
@@ -132,19 +141,27 @@
     gap: @gap-md;
 }
 
-.cancelButton {
-    border: none;
-    border-radius: 10px;
-    background-color: var(--pill-neutral-bg);
-    color: var(--text-secondary);
+.actions .cancelButton {
+    --adm-button-background-color: var(--pill-neutral-bg);
+    --adm-button-text-color: var(--text-secondary);
+    --adm-button-border-radius: 10px;
+    --adm-button-border-width: 0px;
+
+    &:active {
+        --adm-button-background-color: var(--surface-active);
+    }
 }
 
-.confirmButton {
-    border: none;
-    border-radius: 10px;
+.actions .confirmButton {
+    --adm-button-background-color: var(--btn-primary-bg);
+    --adm-button-text-color: var(--btn-primary-text);
+    --adm-button-border-radius: 10px;
+    --adm-button-border-width: 0px;
     font-weight: 600;
-    background-color: var(--pnl-down);
-    color: var(--text-on-positive);
+
+    &:active {
+        --adm-button-background-color: var(--btn-primary-bg-active);
+    }
 }
 
 .deleteAction {

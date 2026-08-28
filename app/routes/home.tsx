@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useLoaderData, useNavigate, useFetcher } from "react-router";
-import { SwipeAction } from "antd-mobile";
+import { useLoaderData, useNavigate, useFetcher, useRevalidator } from "react-router";
+import { PullToRefresh, SwipeAction } from "antd-mobile";
 import { ChartNoAxesColumn, Percent } from "lucide-react";
 import { HoldingCard } from "../features/trade-record/components/HoldingCard";
 import { SellModal } from "../features/trade-record/components/SellModal";
@@ -41,7 +41,18 @@ export default function HomeRoute() {
 
 	const navigate = useNavigate();
 	const fetcher = useFetcher();
+	const revalidator = useRevalidator();
 	const [sellHolding, setSellHolding] = useState<any>(null);
+
+	/**
+	 * 下拉刷新：重新走一遍 clientLoader，**不带 force**。
+	 * 服务端的报价缓存只缓存成功结果（失败的不写缓存），所以正常标的直接命中缓存、
+	 * 上次取数失败的标的会自然重试 —— 这正是「缓存期内用缓存，只重拉异常数据」的效果，
+	 * 不需要额外的强制刷新参数。要强刷单个标的走卡片上的刷新按钮。
+	 */
+	const handleRefresh = async () => {
+		await revalidator.revalidate();
+	};
 
 	return (
 		<div className={styles.page}>
@@ -59,32 +70,36 @@ export default function HomeRoute() {
 				</button>
 			</div>
 
-			<div className={styles.list}>
-				{holdings.length === 0 ? (
-					<EmptyState
-						icon={ChartNoAxesColumn}
-						title="暂无持仓"
-						description="点击右下角「＋」添加第一条记录"
-					/>
-				) : (
-					holdings.map((holding: any) => (
-						<div key={holding.item_id} className={styles.cardWrapper}>
-							<SwipeAction
-								rightActions={[{
-									key: 'sell',
-									text: '卖出',
-									color: 'success',
-									onClick: () => setSellHolding(holding)
-								}]}
-							>
-								<div onClick={() => navigate(`/holdings/${holding.item_id}`)}>
-									{/* 将附带了 live_price 的 holding 传给卡片 */}
-									<HoldingCard holding={holding} />
+			<div className={styles.scrollArea}>
+				<PullToRefresh onRefresh={handleRefresh}>
+					<div className={styles.list}>
+						{holdings.length === 0 ? (
+							<EmptyState
+								icon={ChartNoAxesColumn}
+								title="暂无持仓"
+								description="点击右下角「＋」添加第一条记录"
+							/>
+						) : (
+							holdings.map((holding: any) => (
+								<div key={holding.item_id} className={styles.cardWrapper}>
+									<SwipeAction
+										rightActions={[{
+											key: 'sell',
+											text: '卖出',
+											color: 'success',
+											onClick: () => setSellHolding(holding)
+										}]}
+									>
+										<div onClick={() => navigate(`/holdings/${holding.item_id}`)}>
+											{/* 将附带了 live_price 的 holding 传给卡片 */}
+											<HoldingCard holding={holding} />
+										</div>
+									</SwipeAction>
 								</div>
-							</SwipeAction>
-						</div>
-					))
-				)}
+							))
+						)}
+					</div>
+				</PullToRefresh>
 			</div>
 
 			<FloatingActionButton aboveTabBar aria-label="新增交易记录" onClick={() => navigate('/trade/new')} />

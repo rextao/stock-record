@@ -106,7 +106,8 @@ export default function NewItemRoute() {
 
     return (
         <div className={styles.page}>
-            <NavBar onBack={() => navigate(-1)} className={styles.navBar}>
+            {/* 与保存成功后的 redirect 保持一致：取消和保存都回条目管理，不要一个回列表一个回首页 */}
+            <NavBar onBack={() => navigate("/items/manage", { replace: true })} className={styles.navBar}>
                 新增条目
             </NavBar>
 

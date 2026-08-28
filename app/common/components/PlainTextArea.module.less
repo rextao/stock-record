@@ -1,0 +1,27 @@
+/**
+ * 行数上下限写成 min/max-height（原来 antd-mobile 的 autoSize 是 4~8 行）。
+ * contenteditable 的高度天然跟着内容长，只需要卡住两头，不需要 JS 量。
+ */
+@plain-text-line-height: 24px;
+
+.area {
+    min-height: (@plain-text-line-height * 4);
+    max-height: (@plain-text-line-height * 8);
+    overflow-y: auto;
+    font-size: 16px;
+    line-height: @plain-text-line-height;
+    color: var(--text-primary);
+    caret-color: var(--accent);
+    outline: none;
+    /* 换行靠文本自身的 \n，没有这条 textContent 里的换行不会渲染 */
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    -webkit-user-select: text;
+    user-select: text;
+
+    &[data-empty='true']::before {
+        content: attr(data-placeholder);
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+}

@@ -7,6 +7,7 @@ import type {
 	TradeDetail,
 	TradeWithItem,
 } from "../features/trade-record/types";
+import type { HistoryRange, PriceHistory } from "../features/stock-chart/types";
 
 export interface StockSearchResult {
 	symbol: string;
@@ -64,6 +65,37 @@ export const fetchHoldingDetail = (itemId: number, options: RequestOptions = {})
 
 export const sellByItem = (payload: { itemId: number; price: number; qty: number }) =>
 	postJson<{ success: true }>("/api/holdings/sell", payload);
+
+// ---------- 单标的报价 ----------
+export interface QuotePayload {
+	symbol: string;
+	price: number;
+	fetchedAt: number | null;
+}
+
+/**
+ * 拉单个标的的现价。refresh=true 会让服务端先清掉两级缓存再打第三方，
+ * 对应首页卡片上的手动刷新。取不到报价时服务端返回 502，这里统一抛错。
+ */
+export const fetchQuote = (symbol: string, options: RequestOptions & { refresh?: boolean } = {}) =>
+	request<QuotePayload>(
+		`/api/quotes/${encodeURIComponent(symbol)}${options.refresh ? "?refresh=1" : ""}`,
+		{ signal: options.signal },
+	);
+
+// ---------- 历史日线 ----------
+/**
+ * 拉某个标的的日收盘价序列。数据源是 Yahoo（Finnhub 免费档没有历史权限），
+ * 服务端缓存 1 小时，取不到时返回 502，这里统一抛错。
+ */
+export const fetchPriceHistory = (
+	symbol: string,
+	range: HistoryRange,
+	options: RequestOptions = {},
+) =>
+	request<PriceHistory>(`/api/history/${encodeURIComponent(symbol)}?range=${range}`, {
+		signal: options.signal,
+	});
 
 // ---------- 交易 ----------
 export const fetchTrades = (options: RequestOptions = {}) =>

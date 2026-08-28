@@ -1,0 +1,188 @@
+.page {
+    height: 100%;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    /* standalone 下页面铺到状态栏下方，NavBar 自己躲开 */
+    .safe-area-top();
+}
+
+.navBar {
+    --border-bottom: 1px solid var(--border);
+
+    background-color: var(--app-bg);
+    flex-shrink: 0;
+}
+
+.body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: @gap-lg;
+    padding-bottom: calc(@gap-lg + @safe-bottom);
+}
+
+.summary {
+    display: flex;
+    align-items: baseline;
+    gap: @gap-sm;
+    flex-shrink: 0;
+}
+
+.symbol {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-family: monospace;
+}
+
+.lastPrice {
+    font-size: 24px;
+    font-weight: 600;
+    font-family: monospace;
+}
+
+.change {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.up {
+    color: var(--pnl-up);
+}
+
+.down {
+    color: var(--pnl-down);
+}
+
+/* 区间切换用自绘按钮组：antd-mobile 的分段控件要覆盖一堆样式才对得上主题 */
+.rangeBar {
+    display: flex;
+    /* 六个区间要在一行里排开，间距和字号都得收一点 */
+    gap: @gap-xs;
+    margin: @gap-lg 0;
+    flex-shrink: 0;
+}
+
+.rangeButton {
+    flex: 1;
+    padding: 6px 0;
+    border: 1px solid var(--border);
+    border-radius: @radius-pill;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+        opacity: 0.6;
+    }
+}
+
+.rangeButtonActive {
+    border-color: var(--accent-purple);
+    background-color: var(--pill-purple-bg);
+    color: var(--accent-purple);
+    font-weight: 600;
+}
+
+.chartArea {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 加载/异常/空态共用一块居中区域，切区间时图表位置不跳 */
+.placeholder {
+    flex: 1;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: @gap-md;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.retryButton {
+    padding: 6px 18px;
+    border: 1px solid var(--accent-purple);
+    border-radius: @radius-pill;
+    background-color: var(--pill-purple-bg);
+    color: var(--accent-purple);
+    font-size: 13px;
+    cursor: pointer;
+
+    &:active {
+        opacity: 0.6;
+    }
+}
+
+.footnote {
+    margin-top: @gap-sm;
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+/* 点中标记后的成交明细，占位和 footnote 同一块地方 */
+.detail {
+    margin-top: @gap-sm;
+    padding: @gap-md;
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+    background-color: var(--card-bg);
+    flex-shrink: 0;
+    max-height: 30%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.detailHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: @gap-sm;
+}
+
+.detailSide {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.detailMeta {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.detailRow {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: @gap-sm;
+    padding: 3px 0;
+    font-size: 12px;
+}
+
+.detailDate {
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+.detailValue {
+    flex: 1;
+    text-align: center;
+    font-family: monospace;
+    color: var(--text-primary);
+}
+
+.detailProfit {
+    min-width: 64px;
+    text-align: right;
+    font-family: monospace;
+    font-weight: 500;
+}

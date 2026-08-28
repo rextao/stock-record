@@ -314,12 +314,12 @@ export class TradingDB {
     async getHoldingDetail(itemId: number): Promise<HoldingDetailPayload> {
         const { results: trades } = await this.db
             .prepare(
-                `SELECT t.*, i.name as item_name
+                `SELECT t.*, i.name as item_name, i.symbol as item_symbol
                  FROM trades t LEFT JOIN items i ON t.item_id = i.id
                  WHERE t.item_id = ? ORDER BY t.buy_time DESC`
             )
             .bind(itemId)
-            .all<Trade & { item_name: string }>();
+            .all<Trade & { item_name: string; item_symbol: string }>();
 
         const { results: records } = await this.db
             .prepare(
@@ -361,6 +361,8 @@ export class TradingDB {
             holding: {
                 item_id: itemId,
                 item_name: trades[0]?.item_name || '未知标的',
+                // 走势图要用它去拉行情，取的是代码而不是中文展示名
+                item_symbol: trades[0]?.item_symbol || '',
                 remaining_qty: remainingQty,
                 weighted_avg_price: remainingQty > 0 ? weightedSum / remainingQty : 0,
                 realized_pnl: realizedPnl,

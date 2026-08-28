@@ -48,3 +48,15 @@
 // 页面底部给 TabBar / 固定按钮留出的空间
 @page-bottom-tabbar: 100px;
 @page-bottom-action: 120px;
+
+/**
+ * 自绘数字键盘（NumericKeypad）的尺寸。
+ * 键盘本体和「要给键盘让位的页面」共用这一组变量：键盘高度由这些常量算得，
+ * 页面据此加底部内边距。任何一侧写死数字都会在另一侧对不上。
+ */
+@keypad-pad: 8px;
+@keypad-gap: 6px;
+@keypad-info-height: 34px;
+@keypad-nav-height: 44px;
+@keypad-key-height: 46px;
+@keypad-body-height: (@keypad-pad * 2 + @keypad-info-height + @keypad-nav-height + @keypad-key-height * 4 + @keypad-gap * 3);

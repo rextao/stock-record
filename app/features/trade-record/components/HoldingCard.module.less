@@ -5,11 +5,19 @@
 
 .header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 2px;
     margin-bottom: @gap-md;
 }
 
-.titleGroup {
+.headerMain {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: @gap-sm;
+}
+
+.headerSub {
     display: flex;
     align-items: center;
     gap: @gap-sm;
@@ -19,6 +27,12 @@
     font-size: 18px;
     font-weight: 600;
     color: var(--text-primary);
+    /* 长名字只截自己，不去挤右边的现价 */
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .itemMeta {
@@ -26,14 +40,92 @@
     color: var(--text-secondary);
 }
 
+/* 历史走势入口：放在底部栏左侧，带文字标签，比孤零零一个图标好认 */
+.historyButton {
+    padding: @gap-xs @gap-sm @gap-xs 0;
+    border: none;
+    background: transparent;
+    color: var(--accent-purple);
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: @gap-xs;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+        opacity: 0.6;
+    }
+}
+
 .livePrice {
     font-size: 14px;
     font-weight: 500;
     color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: @gap-xs;
+    flex-shrink: 0;
 }
 
 .livePriceValue {
     font-family: monospace;
+    font-size: 15px;
+}
+
+/* 数据超过阈值没更新：标黄提示「该刷一下」，但不阻碍阅读 */
+.livePriceStale {
+    color: var(--status-warn);
+}
+
+/* 取不到报价时的占位，弱化成次要色，真正的警示交给旁边的图标 */
+.livePriceMissing {
+    color: var(--text-muted);
+}
+
+.livePriceAge {
+    font-size: 11px;
+    color: var(--status-warn);
+}
+
+.livePriceAlert {
+    color: var(--status-danger);
+    flex-shrink: 0;
+}
+
+.refreshButton {
+    // 触摸目标要够大，但视觉上只有图标，所以用负 margin 把内边距吃回去
+    padding: @gap-xs;
+    margin: -@gap-xs;
+    margin-left: 0;
+    border: none;
+    background: transparent;
+    color: var(--accent-purple);
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+        opacity: 0.6;
+    }
+
+    &.refreshing {
+        // 刷新中禁止重复点击，靠 pointer-events 而不是 disabled：
+        // disabled 会让按钮丢焦点样式，这里只需要挡住点击
+        pointer-events: none;
+        color: var(--status-warn);
+
+        svg {
+            animation: holding-card-spin 0.9s linear infinite;
+        }
+    }
+}
+
+@keyframes holding-card-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .summary {
@@ -80,7 +172,8 @@
 
 .toggleRow {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
     margin-top: @gap-xs;
 }
 

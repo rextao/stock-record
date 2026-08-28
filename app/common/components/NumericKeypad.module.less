@@ -1,0 +1,105 @@
+/**
+ * 尺寸全部取自 variables.less 的 @keypad-* 变量：让位的页面要靠同一组变量算出
+ * 底部内边距，写死在这里两边就会对不上（px 还会被转成 vw，硬编码更不可靠）。
+ */
+.keypad {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 120;
+    padding: @keypad-pad;
+    padding-bottom: calc(@keypad-pad + @safe-bottom);
+    background-color: var(--popup-bg);
+    border-top: 1px solid var(--border);
+    user-select: none;
+    -webkit-user-select: none;
+    /* 关掉双击缩放的 300ms 等待，连续敲键才不粘 */
+    touch-action: manipulation;
+}
+
+.info {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: @gap-sm;
+    height: @keypad-info-height;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: @keypad-nav-height;
+}
+
+.navGroup {
+    display: flex;
+    align-items: center;
+    gap: @gap-xs;
+}
+
+.navButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+
+    &:disabled {
+        color: var(--disabled-text);
+    }
+}
+
+.done {
+    flex-shrink: 0;
+    height: 32px;
+    padding: 0 @gap-lg;
+    border: none;
+    border-radius: @radius-md;
+    background-color: var(--accent);
+    color: var(--text-on-accent);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.keys {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: @keypad-gap;
+}
+
+.key {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: @keypad-key-height;
+    border: none;
+    border-radius: @radius-md;
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 22px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+
+    &:active {
+        background-color: var(--surface-active);
+    }
+
+    &:disabled {
+        color: var(--disabled-text);
+    }
+}
+
+.keySecondary {
+    background-color: var(--surface-active);
+    font-size: 18px;
+}

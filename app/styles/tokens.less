@@ -43,10 +43,20 @@
     --accent-soft: rgba(108, 92, 231, 0.08);
     --accent-soft-strong: rgba(108, 92, 231, 0.14);
 
+    /* 主操作按钮（保存/确认）。刻意不直接用 --accent：深色模式下要更亮才压得住纯黑底 */
+    --btn-primary-bg: #6c5ce7;
+    --btn-primary-bg-active: #5a4bd0;
+    --btn-primary-text: #ffffff;
+
     /* 状态胶囊 */
     --pill-neutral-bg: rgba(0, 0, 0, 0.05);
     --pill-purple-bg: rgba(139, 63, 240, 0.12);
     --pill-success-bg: rgba(0, 153, 77, 0.12);
+
+    /* 状态提示（数据过期 / 取数失败）。不复用涨跌色，否则会和价格语义打架 */
+    --status-warn: #b45309;
+    --status-warn-soft: rgba(180, 83, 9, 0.12);
+    --status-danger: #dc2626;
 
     /* 表单 */
     --input-bg: #ffffff;
@@ -98,9 +108,17 @@ html[data-prefers-color-scheme='dark'] {
     --accent-soft: rgba(108, 92, 231, 0.08);
     --accent-soft-strong: rgba(108, 92, 231, 0.15);
 
+    --btn-primary-bg: #7c6cf0;
+    --btn-primary-bg-active: #6a5ade;
+    --btn-primary-text: #ffffff;
+
     --pill-neutral-bg: rgba(255, 255, 255, 0.06);
     --pill-purple-bg: rgba(168, 85, 247, 0.15);
     --pill-success-bg: rgba(34, 197, 94, 0.15);
+
+    --status-warn: #fbbf24;
+    --status-warn-soft: rgba(251, 191, 36, 0.14);
+    --status-danger: #f87171;
 
     --input-bg: rgba(255, 255, 255, 0.04);
     --input-border: rgba(255, 255, 255, 0.08);

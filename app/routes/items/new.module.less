@@ -100,17 +100,26 @@
     flex-shrink: 0;
 }
 
-.saveButton {
+/* 选择器权重与 --adm-button-* 钩子的原因见 app/routes/trade/new.module.less 里的注释，两处要一致 */
+.actionBar .saveButton {
+    --adm-button-background-color: var(--btn-primary-bg);
+    --adm-button-text-color: var(--btn-primary-text);
+    --adm-button-border-radius: @radius-lg;
+    --adm-button-border-width: 0px;
     height: 44px;
     font-size: 16px;
     font-weight: 600;
-    border: none;
-    border-radius: @radius-lg;
-    background-color: var(--accent);
-    color: var(--text-on-accent);
+
+    &:active {
+        --adm-button-background-color: var(--btn-primary-bg-active);
+    }
 }
 
-.saveButtonDisabled {
-    background-color: var(--disabled-bg);
-    color: var(--disabled-text);
+.actionBar .saveButtonDisabled {
+    --adm-button-background-color: var(--disabled-bg);
+    --adm-button-text-color: var(--disabled-text);
+
+    &:active {
+        --adm-button-background-color: var(--disabled-bg);
+    }
 }

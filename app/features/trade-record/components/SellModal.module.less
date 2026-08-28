@@ -111,14 +111,19 @@
     margin-top: 2px;
 }
 
-.confirmButton {
-    background-color: var(--pnl-down);
-    color: var(--text-on-positive);
-    border: none;
-    border-radius: @radius-lg;
+/* 权重与 --adm-button-* 钩子的原因见 app/routes/trade/new.module.less 的注释；配色统一用主按钮色 */
+.body .confirmButton {
+    --adm-button-background-color: var(--btn-primary-bg);
+    --adm-button-text-color: var(--btn-primary-text);
+    --adm-button-border-radius: @radius-lg;
+    --adm-button-border-width: 0px;
     font-size: 16px;
     font-weight: 600;
     height: 48px;
+
+    &:active {
+        --adm-button-background-color: var(--btn-primary-bg-active);
+    }
 }
 
 .up {
@@ -133,4 +138,3 @@
 .idle {
     color: var(--text-muted);
 }
-

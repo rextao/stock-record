@@ -7,6 +7,7 @@ export interface AppConfig {
     cache: {
         quoteTtlSeconds: number; // 实时报价缓存时长
         searchTtlSeconds: number; // 股票搜索结果缓存时长（代码与名称几乎不变，可以放很久）
+        historyTtlSeconds: number; // 历史日线缓存时长（收盘后不再变化，可以放很久）
     };
 }
 
@@ -21,6 +22,8 @@ export function getConfig(env: any): AppConfig {
             quoteTtlSeconds: Number(env.QUOTE_CACHE_TTL) || 600,
             // 默认缓存 1 天
             searchTtlSeconds: Number(env.SEARCH_CACHE_TTL) || 86400,
+            // 默认缓存 1 小时：盘中最后一根日线还在动，太长会让当天的点一直停在旧价上
+            historyTtlSeconds: Number(env.HISTORY_CACHE_TTL) || 3600,
         },
     };
 }

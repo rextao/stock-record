@@ -74,6 +74,10 @@ export interface HoldingCard {
 /** 首页列表：持仓卡片 + 实时价 */
 export interface HoldingCardWithPrice extends HoldingCard {
 	live_price: number | null;
+	/** 服务端真正打第三方拿到这个价格的时刻（epoch ms），用来判断数据新旧 */
+	live_price_at: number | null;
+	/** 取数异常原因；正常为 null。NO_QUOTE 表示这个代码查不到报价 */
+	live_price_error: string | null;
 }
 
 /** 持仓详情页里的单笔交易 */
@@ -88,6 +92,8 @@ export interface HoldingDetailPayload {
 	holding: {
 		item_id: number;
 		item_name: string;
+		/** 标的代码；拉行情（现价、历史日线）用的是它，不是展示名 */
+		item_symbol: string;
 		remaining_qty: number;
 		weighted_avg_price: number;
 		realized_pnl: number;

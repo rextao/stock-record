@@ -29,22 +29,54 @@ export const VIEWPORT_BOOTSTRAP_SCRIPT = `(function () {
   root.setAttribute('data-display-mode', standalone ? 'standalone' : 'browser');
 
   var vv = window.visualViewport;
+  var lastHeight = -1;
+  var lastTop = -1;
+  var lastKeyboard = -1;
   function sync() {
-    var height = vv ? vv.height : window.innerHeight;
+    var height = Math.round(vv ? vv.height : window.innerHeight);
     if (!height) return;
-    var top = vv ? vv.offsetTop : 0;
-    var keyboard = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
-    root.style.setProperty('--app-viewport-height', height + 'px');
-    root.style.setProperty('--app-viewport-top', top + 'px');
-    root.style.setProperty('--app-keyboard-inset', keyboard + 'px');
+    var top = Math.round(vv ? vv.offsetTop : 0);
+    var keyboard = Math.round(vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0);
+    // 只在整像素级别真变了才写。键盘动画期间 visualViewport 会按帧抛出亚像素变化，
+    // 每次都写就是持续重排，外壳跟着一帧一帧位移，看起来就是抖动。
+    if (height !== lastHeight) {
+      root.style.setProperty('--app-viewport-height', height + 'px');
+      lastHeight = height;
+    }
+    if (top !== lastTop) {
+      root.style.setProperty('--app-viewport-top', top + 'px');
+      lastTop = top;
+    }
+    if (keyboard !== lastKeyboard) {
+      root.style.setProperty('--app-keyboard-inset', keyboard + 'px');
+      lastKeyboard = keyboard;
+    }
+  }
+  // 同一帧内的多次事件合并成一次写入
+  var frame = 0;
+  function scheduleSync() {
+    if (frame) return;
+    frame = requestAnimationFrame(function () {
+      frame = 0;
+      sync();
+    });
   }
   sync();
   if (vv) {
-    vv.addEventListener('resize', sync);
-    vv.addEventListener('scroll', sync);
+    vv.addEventListener('resize', scheduleSync);
+    vv.addEventListener('scroll', scheduleSync);
   }
-  window.addEventListener('resize', sync);
-  window.addEventListener('focusin', sync);
-  window.addEventListener('focusout', function () { setTimeout(sync, 120); });
-  window.addEventListener('orientationchange', function () { setTimeout(sync, 200); });
+  window.addEventListener('resize', scheduleSync);
+  window.addEventListener('focusin', function () {
+    /*
+     * iOS 聚焦输入框时会把整个 layout viewport 往上推（visualViewport.offsetTop 变正）。
+     * 外壳本来就是 position:fixed，没有滚动的理由，这里主动归零，--app-viewport-top
+     * 就能稳定停在 0，body 不必跟着位移。top 跟随逻辑仍保留：部分场景 iOS 会无视这次
+     * scrollTo，那时只能靠它兜底。
+     */
+    window.scrollTo(0, 0);
+    scheduleSync();
+  });
+  window.addEventListener('focusout', function () { setTimeout(scheduleSync, 120); });
+  window.addEventListener('orientationchange', function () { setTimeout(scheduleSync, 200); });
 })();`;

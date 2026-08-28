@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useEffect, useState, type MouseEvent } from 'react';
+import { useNavigate } from 'react-router';
+import { AlertTriangle, ChartLine, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import clsx from 'clsx';
+import { fetchQuote } from '../../../api/trading';
+import { useSharedNow } from '../../../common/hooks/useSharedNow';
 import styles from './HoldingCard.module.less';
 
 const formatPrice = (val: number) => val.toFixed(2);
@@ -10,23 +13,110 @@ const formatShortTime = (timeStr: string) => (timeStr ? timeStr.slice(5, 16) : '
 // 涨跌统一走同一个判断，避免各处重复写三元
 const pnlClass = (value: number) => (value >= 0 ? styles.up : styles.down);
 
+// 超过这个时长就把现价标黄，提示「该刷一下了」。
+// 判断依据是服务端的抓取时刻，不是行情自带的时间戳 —— 休市时价格本来不动，
+// 用行情时间戳会让所有标的一直是黄色，等于没有提示。
+const STALE_AFTER_MS = 5 * 60 * 1000;
+
+interface QuoteState {
+    price: number | null;
+    fetchedAt: number | null;
+    error: string | null;
+}
+
+const quoteFromHolding = (holding: any): QuoteState => ({
+    price: typeof holding.live_price === 'number' ? holding.live_price : null,
+    fetchedAt: typeof holding.live_price_at === 'number' ? holding.live_price_at : null,
+    error: holding.live_price_error ?? null,
+});
+
+// 只做到分钟粒度，卡片上的空间放不下更精确的描述
+const formatAge = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    if (minutes < 60) return `${Math.max(minutes, 1)} 分钟前`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} 小时前`;
+    return `${Math.floor(hours / 24)} 天前`;
+};
+
 export function HoldingCard({ holding }: { holding: any }) {
     const [expanded, setExpanded] = useState(true);
+    const [quote, setQuote] = useState<QuoteState>(() => quoteFromHolding(holding));
+    const [refreshing, setRefreshing] = useState(false);
+    const now = useSharedNow();
+    const navigate = useNavigate();
+
+    // loader 重新校验后，服务端数据视为权威，覆盖掉本地手动刷新的结果
+    useEffect(() => {
+        setQuote(quoteFromHolding(holding));
+    }, [holding.live_price, holding.live_price_at, holding.live_price_error]);
+
+    const hasPrice = quote.price != null;
+    const age = quote.fetchedAt != null ? now - quote.fetchedAt : null;
+    const stale = hasPrice && age != null && age > STALE_AFTER_MS;
+
+    const handleRefresh = async (event: MouseEvent<HTMLButtonElement>) => {
+        // 卡片外层套着「点击进详情」和 SwipeAction，不拦住就会误跳页
+        event.stopPropagation();
+        event.preventDefault();
+        if (refreshing) return;
+
+        setRefreshing(true);
+        try {
+            const next = await fetchQuote(holding.item_symbol, { refresh: true });
+            setQuote({ price: next.price, fetchedAt: next.fetchedAt ?? Date.now(), error: null });
+        } catch (error: any) {
+            setQuote({ price: null, fetchedAt: Date.now(), error: error?.message || '刷新失败' });
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     return (
         <div className={styles.card}>
             <div className={styles.header}>
-                <div className={styles.titleGroup}>
+                {/* 第一行只放标的名和现价：挤进笔数、时效等信息会让标的名被压没 */}
+                <div className={styles.headerMain}>
                     <span className={styles.itemName}>{holding.item_name}</span>
-                    <span className={styles.itemMeta}>
-                        {holding.trade_count}笔持仓 (余 {holding.remaining_qty} 仓)
-                    </span>
-                </div>
-                {holding.live_price && (
                     <div className={styles.livePrice}>
-                        现价: <span className={styles.livePriceValue}>{formatPrice(holding.live_price)}</span>
+                        {hasPrice ? (
+                            <span
+                                className={clsx(styles.livePriceValue, stale && styles.livePriceStale)}
+                                title={age != null ? `更新于 ${formatAge(age)}` : undefined}
+                            >
+                                {formatPrice(quote.price as number)}
+                            </span>
+                        ) : (
+                            <span
+                                className={clsx(styles.livePriceValue, styles.livePriceMissing)}
+                                title={quote.error === 'NO_QUOTE' ? '未取到该标的报价' : quote.error || '报价异常'}
+                            >
+                                --
+                            </span>
+                        )}
+                        {!hasPrice && !refreshing && (
+                            <AlertTriangle size={13} className={styles.livePriceAlert} aria-hidden />
+                        )}
+                        <button
+                            type="button"
+                            className={clsx(styles.refreshButton, refreshing && styles.refreshing)}
+                            aria-label="刷新现价"
+                            aria-busy={refreshing}
+                            // pointerdown 也要拦：SwipeAction 是在指针事件上做手势识别的
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onClick={handleRefresh}
+                        >
+                            <RefreshCw size={14} />
+                        </button>
                     </div>
-                )}
+                </div>
+                {/* 第二行放次要信息，现价过期的提示也挪到这里 */}
+                <div className={styles.headerSub}>
+                    <span className={styles.itemMeta}>
+                        {holding.trade_count} 笔持仓 · 余 {holding.remaining_qty} 仓
+                    </span>
+                    {stale && <span className={styles.livePriceAge}>现价 {formatAge(age as number)}</span>}
+                </div>
             </div>
 
             <div className={styles.summary}>
@@ -55,9 +145,23 @@ export function HoldingCard({ holding }: { holding: any }) {
                 </div>
             </div>
 
-            {/* 底部栏：仅保留靠右的展开/收起箭头 */}
-            {holding.sub_trades.length > 0 && (
-                <div className={styles.toggleRow}>
+            {/* 底部栏：左边走势入口，右边展开/收起箭头，正好用掉这行本来空着的地方 */}
+            <div className={styles.toggleRow}>
+                <button
+                    type="button"
+                    className={styles.historyButton}
+                    // 与刷新按钮同理：外层的「点击进详情」和 SwipeAction 手势都要拦住
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        navigate(`/holdings/${holding.item_id}/history`);
+                    }}
+                >
+                    <ChartLine size={14} />
+                    走势
+                </button>
+                {holding.sub_trades.length > 0 && (
                     <div
                         className={styles.toggleButton}
                         onClick={(e) => {
@@ -67,8 +171,8 @@ export function HoldingCard({ holding }: { holding: any }) {
                     >
                         {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
             {expanded && holding.sub_trades.length > 0 && (
                 <div className={styles.subTradeList}>
