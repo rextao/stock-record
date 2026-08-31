@@ -38,11 +38,11 @@ app/
   utils/calculations.ts     纯计算
 workers/
   app.ts                    Worker 入口：/api 路由 + /api/health 自检 + 其余回退 index.html
-  server/db/client.ts       TradingDB，所有 D1 SQL 都在这里
+  server/db/client.ts       TradingDB，交易域 D1 SQL 都在这里（行情蜡烛表的 SQL 在 services/stock/history/store.ts）
   server/db/schema.sql      表结构
   server/cache/index.ts     通用两级缓存（内存 + Cloudflare Cache API），与业务无关
   server/config/index.ts    读 env 生成 AppConfig
-  server/services/stock/    行情服务：types(IStockProvider) / providers 注册表 / cached(缓存装饰器)
+  server/services/stock/    行情服务：types(IStockProvider) / providers 注册表 / cached(缓存装饰器) / history(Yahoo + D1 本地副本)
   server/services/stock/history/  历史日线（Yahoo），与报价链路互不相干
 sw/sw.ts                    Service Worker 源码，由 scripts/build-sw.mjs 用 esbuild 打包
 public/                     manifest.json、图标、_headers（缓存头）
@@ -62,7 +62,7 @@ px 会被 `postcss-px-to-viewport-8-plugin` 转 vw；不想被转的元素（Tab
 
 图标用 `lucide-react`。
 
-走势图（`app/features/stock-chart/components/PriceHistoryChart.tsx`）**刻意手绘 Canvas，不引图表库**：需求是自定义标注 —— 同方向成交按像素间距合并成 `B3`、圆点钉在真实成交价上、最近卖价的水平虚线、最后一笔卖出旁挂收益金额。lightweight-charts 的 marker 只能贴在 K 线上方/下方，**钉不到任意价格**（买入价通常不等于当日收盘价，点会飘），为拿它的手势要把标注自由度换掉。看日期靠点击标记出竖向辅助线 + 下方明细，不做 hover。**将来真要双指平移缩放再重新评估换库**，那部分自己写不划算。
+走势图（`app/features/stock-chart/components/PriceHistoryChart.tsx`）**刻意手绘 Canvas，不引图表库**：需求是自定义标注 —— 同方向成交按像素间距合并成 `B3`、圆点钉在真实成交价上、最近卖价的水平虚线、最后一笔卖出旁挂收益金额。lightweight-charts 的 marker 只能贴在 K 线上方/下方，**钉不到任意价格**（买入价通常不等于当日收盘价，点会飘），为拿它的手势要把标注自由度换掉。看日期靠点击标记出竖向辅助线 + 下方明细，不做 hover。**将来真要双指平移缩放再重新评估换库**，那部分自己写不划算。同一块 Canvas 兼画折线和 K 线（`PriceHistoryChart` 的 `mode` prop；页面上只是 state，不持久化）：K 线只在点数 ≤ `MAX_CANDLE_BARS`(90) 且每根都带 o/h/l 时才画，否则**开关照旧可点、组件内部静默退回折线**，提示语由页面给 —— 手机宽度下 200 多根实体不足 1px，糊成色块不如折线；蜡烛涨红跌绿都画实心，空心描边在 1~2px 宽的实体上只剩边框。 走势页 `app/routes/holdings/history.tsx` **刻意不写 `clientLoader`**：RR7 在 loader 结算前不渲染新页面、全仓又没有 pending 指示，点「走势」看起来像卡住；标的名/代码由首页卡片 `navigate(..., { state })` 带过来，详情在页内异步拉，`symbol` 还空着时行情 effect 直接 return（骨架继续转，不要在这里报错）。默认区间是 `DEFAULT_HISTORY_RANGE = '5d'`，Worker 的 fallback 引同一个常量。
 
 移动端**纯数字字段一律用自绘键盘 `app/common/components/NumericKeypad.tsx`，不要用原生输入框**（参考 `app/routes/trade/new.tsx`）：iOS 上 input 一拿到焦点，WebKit 就会挂一条无法隐藏的表单辅助条，Chrome/Android 又没有，且软键盘弹收会改写 visualViewport 必然抖动。做法是单元格用 `<button>` 显示值 + 自绘光标，`onPointerDown` 里 `preventDefault` 阻止取得焦点。键盘尺寸走 `variables.less` 的 `@keypad-*`，让位的页面用 `@keypad-body-height` 算底部内边距。
 
@@ -76,7 +76,7 @@ px 会被 `postcss-px-to-viewport-8-plugin` 转 vw；不想被转的元素（Tab
 
 TTL：`QUOTE_CACHE_TTL` 默认 600s，`SEARCH_CACHE_TTL` 默认 86400s，`HISTORY_CACHE_TTL` 默认 3600s。
 
-历史行情（`GET /api/history/:symbol?range=5d|1mo|3mo|6mo|1y|ytd`）**走 Yahoo，不走 `STOCK_PROVIDER`**：Finnhub 免费档没有 candle 权限（`/stock/candle` 实测 403）。provider 在 `services/stock/history/yahoo.ts`，必须带浏览器 UA（不带会 429/403），是非公开接口、无 SLA，**本机 curl 通不代表 Workers 出口 IP 通，只能部署后验**，真被封就换 Twelve Data。区间与粒度的映射在 `app/features/stock-chart/types.ts` 的 `RANGE_INTERVALS`：`5d` 用 `60m`（配日线只有 5 个点，折线退化成直线段），其余日线；Yahoo 只认 `1d/5d/1mo/3mo/6mo/1y/2y/5y/10y/ytd/max`，**写 `1w` 不会报错、会静默降级成 1 天 1 个点**。日内点靠 `PriceCandle.t`（epoch ms）+ `PriceHistory.utcOffsetSeconds` 标成交易所当地时间，`date` 仍是当地交易日、买卖点按它对齐（同一天有多个点时落到当天最后一根）。空序列和上游异常一律 502 + `{error}`（中文文案，前端直接透出），这样 SW 的 api-cache 不会把空曲线缓存下来回放；`/api/history` 走 NetworkFirst 是**故意的**，离线能看上次那条曲线。走势图页面的买卖点不另开接口，复用 `/api/holdings/:id`：买点是 `trades.buy_time` + `current_price`（这个字段名是历史遗留，存的其实是**买入价**），卖点是 `sell_records`。
+历史行情（`GET /api/history/:symbol?range=5d|1mo|3mo|6mo|1y|ytd`）**走 Yahoo，不走 `STOCK_PROVIDER`**：Finnhub 免费档没有 candle 权限（`/stock/candle` 实测 403）。provider 在 `services/stock/history/yahoo.ts`，必须带浏览器 UA（不带会 429/403），是非公开接口、无 SLA，**本机 curl 通不代表 Workers 出口 IP 通，只能部署后验**，真被封就换 Twelve Data。区间与粒度的映射在 `app/features/stock-chart/types.ts` 的 `RANGE_INTERVALS`：`5d` 用 `60m`（配日线只有 5 个点，折线退化成直线段），其余日线；Yahoo 只认 `1d/5d/1mo/3mo/6mo/1y/2y/5y/10y/ytd/max`，**写 `1w` 不会报错、会静默降级成 1 天 1 个点**。日内点靠 `PriceCandle.t`（epoch ms）+ `PriceHistory.utcOffsetSeconds` 标成交易所当地时间，`date` 仍是当地交易日、买卖点按它对齐（同一天有多个点时落到当天最后一根）。空序列和上游异常一律 502 + `{error}`（中文文案，前端直接透出），这样 SW 的 api-cache 不会把空曲线缓存下来回放；`/api/history` 走 NetworkFirst 是**故意的**，离线能看上次那条曲线。走势图页面的买卖点不另开接口，复用 `/api/holdings/:id`：买点是 `trades.buy_time` + `current_price`（这个字段名是历史遗留，存的其实是**买入价**），卖点是 `sell_records`。 成交日期能在走势页的明细里就地改：`PATCH /api/trades/:id`（body `{buyTime}`）和 `PATCH /api/sell-records/:id`（`{sellTime}`），只写时间字段；格式 `YYYY-MM-DD HH:mm:ss`，**只换日期、保留原时分秒**（排序和「最近一次卖出」都依赖完整时刻）。Yahoo 会按出口 IP 返 429，单独分流成 `HISTORY_RATE_LIMITED` → HTTP 429 + 响应体 `reason`，前端靠 `ApiError.reason` 给重试按钮 20s 冷却并同时锁住区间切换（其他异常 3s），越点越被限。历史数据还有一层 D1 副本：`price_candles` + 水位表 `price_candle_sync`（SQL 在 `services/stock/history/store.ts`）。顺序是缓存命中就完全不读库 → miss 时看本地水位是否新鲜且覆盖窗口 → 否则打 Yahoo 并落库；**上游 429/异常时本地有数据就返回旧曲线**（`fetchedAt` 仍是当初抓取时刻，不伪造新鲜度），宁可旧也别给错误页。落库刻意只写「比水位新」和「比水位旧」的点 + 覆盖最后一根，不做整段 upsert：D1 免费档 rows written 10 万/天，整段重写很容易撞线；rows read 500 万/天且**计的是扫描行数**，所以查询必须落在 `(symbol, interval, ts)` 复合主键索引上，别加无索引的过滤条件。代价是拆股/分红导致的历史 adjclose 修正不会回补，需要时清表重抓。表不存在时读写都吞异常降级成「每次打上游」，所以线上没跑 migration 也不会挂。`price_candles` 还有可空的 `open/high/low`（只给 K 线用）：Yahoo 只把 close 复权，所以四个价一起按 `adjclose/close` 同比缩放后才落库，否则除权那天实体会和折线错位；早于这次改动写入的老行是 NULL，读到缺 o 的行就跳过「新鲜短路」、打一次上游并以 `save(..., rewriteAll=true)` 整段重写自愈（**常规刷新绝不能开 rewriteAll**，会撞 rows written）。已有的库加列要手动 `alter table price_candles add column open/high/low REAL`，重跑 `schema.sql` 补不上（`CREATE TABLE IF NOT EXISTS`）。
 
 报价对外走 `IStockService.getQuote(symbol, {force})` 返回 `LiveQuote {price, fetchedAt, error}`（provider 仍只返回裸数字），缓存 key 是 `quote/v2/<SYMBOL>` —— 值形状变过，v2 用来甩掉 L2 里残留的旧纯数字。首页判断「数据旧了」用的是 `fetchedAt`（我们抓取的时刻），**不是行情自带时间戳**：休市期间价格本来不动，用后者会把所有标的常年标黄。手动刷新走 `GET /api/quotes/:symbol?refresh=1`（单标的粒度省 Finnhub 的 60 次/分钟额度，force 时先 invalidate 再回填），取不到价格返回 502。
 
@@ -84,7 +84,7 @@ TTL：`QUOTE_CACHE_TTL` 默认 600s，`SEARCH_CACHE_TTL` 默认 86400s，`HISTOR
 
 antd-mobile 的 `PullToRefresh` 把手势绑在自己的根节点上，而那个节点**只有内容高度**：内容不满一屏时（首页只有一张卡片）卡片下方的空白不在它里面，从空白处下拉没反应。修法是把它和内部 `.adm-pull-to-refresh-content` 一路 `flex:1` 撑满滚动区（见 `home.module.less` 的 `.scrollArea`），**别给它们加 `min-height:0`**，否则内容多时顶不高外层、`.main` 就不滚了。
 
-取行情用的是 `items.symbol`（SQL 里 `i.symbol as item_symbol`），**不是** `items.name`（中文展示名）。这里曾经传错导致 `live_price` 恒为 null。
+取行情用的是 `items.symbol`（SQL 里 `i.symbol as item_symbol`），**不是** `items.name`（中文展示名）。这里曾经传错导致 `live_price` 恒为 null。 `items.symbol` **允许为空**（搜不到时可以在 `items/new` 走自定义登记，只填名称）：空代码在 `withStockCache.getQuote` 就短路成 `EMPTY_SYMBOL`，不打第三方；重复校验也随之分两路（有代码按 symbol、无代码按 name），空代码一律存 NULL 而不是 `''`，否则第二个自定义条目会被误判成已存在。首页卡片对空代码只显示 `--`，**不显示告警三角、藏掉刷新和走势入口** —— 那不是异常，是本来就没有行情。空代码之后可以在 `items/edit/:id`（`PATCH /api/items/:id`，只放开 name/symbol/description，查重排除自己）补上；交易记录只挂 `items.id`，改名改代码都不影响历史，但 `deleteItem` 是硬删除 + 手动级联清空 trades/sell_records、**没有软删除也没有回收站**，所以 `GET /api/items` 顺带查出 `trade_count`/`sell_count` 给删除确认弹窗报影响范围。
 
 ## PWA / 离线
 
@@ -108,7 +108,7 @@ SW 注册脚本内联在 `<head>`（`app/common/pwa/swBootstrap.ts`），不能�
 
 本地放 `.dev.vars`（已 gitignore）。线上 `FINNHUB_API_KEY` 必须在 Cloudflare Dashboard 建成 **Secret 类型**——`wrangler.json` 的 `vars` 会覆盖同名 Secret。验证：`curl -s https://域名/api/health`，看 `hasQuoteKey` / `stockProvider` / `db` / `tables` / `counts`。
 
-D1 库名 `stock-storage`，`database_id` 是 `31f66cce-ebe7-473b-9da0-343f81a9aec5`。初始化本地库：`npx wrangler d1 execute stock-storage --local --file workers/server/db/schema.sql`。**不要动远端库。**
+D1 库名 `stock-storage`，`database_id` 是 `31f66cce-ebe7-473b-9da0-343f81a9aec5`。初始化本地库：`npx wrangler d1 execute stock-storage --local --file workers/server/db/schema.sql`。**不要动远端库**，改了 `schema.sql` 只提醒用户自己跑一次 `--remote`（表没建时行情持久化会自己降级，不会报错）。
 
 ⚠️ 未解疑点：`wrangler.json` 的 `name` 是 `stock-record`，线上域名却是 `stock.rextao666.workers.dev`，且 `wrangler secret put` 报过「没有叫 stock-record 的 Worker」。多次出现「改了线上没变化」，怀疑用户访问的站点不是这个 Worker，尚未确认。
 

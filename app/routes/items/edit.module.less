@@ -1,0 +1,97 @@
+.page {
+    height: 100%;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    /* standalone 下页面会铺到状态栏下方，顶部 NavBar 必须自己躲开 */
+    .safe-area-top();
+}
+
+.navBar {
+    --border-bottom: 1px solid var(--border);
+
+    background-color: var(--app-bg);
+    flex-shrink: 0;
+}
+
+.content {
+    padding: @gap-lg;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.fieldLabel {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: @gap-sm;
+    letter-spacing: 1px;
+}
+
+.fieldLabelGap {
+    margin-top: @gap-lg;
+}
+
+.field {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+    padding: @gap-md @gap-lg;
+}
+
+.fieldInput {
+    --color: var(--text-primary);
+}
+
+.tip {
+    margin-top: @gap-lg;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
+}
+
+.loading {
+    padding: @gap-xl 0;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.loadError {
+    padding: @gap-xl 0;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.actionBar {
+    padding: @gap-lg @gap-xl;
+    padding-bottom: calc(@gap-lg + @safe-bottom);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+/* 选择器权重与 --adm-button-* 钩子的原因见 app/routes/trade/new.module.less 里的注释，几处要一致 */
+.actionBar .saveButton {
+    --adm-button-background-color: var(--btn-primary-bg);
+    --adm-button-text-color: var(--btn-primary-text);
+    --adm-button-border-radius: @radius-lg;
+    --adm-button-border-width: 0px;
+    height: 44px;
+    font-size: 16px;
+    font-weight: 600;
+
+    &:active {
+        --adm-button-background-color: var(--btn-primary-bg-active);
+    }
+}
+
+.actionBar .saveButtonDisabled {
+    --adm-button-background-color: var(--disabled-bg);
+    --adm-button-text-color: var(--disabled-text);
+
+    &:active {
+        --adm-button-background-color: var(--disabled-bg);
+    }
+}

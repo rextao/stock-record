@@ -30,6 +30,11 @@
     letter-spacing: 1px;
 }
 
+/* 自定义模式下第二个字段的标签，和上一个输入框拉开距离 */
+.fieldLabelGap {
+    margin-top: @gap-lg;
+}
+
 .searchBox {
     background-color: var(--card-bg);
     border: 1px solid var(--border);
@@ -91,6 +96,50 @@
     margin-top: @gap-lg;
     color: var(--pnl-down);
     font-size: 14px;
+}
+
+/* 搜不到时的兜底出口：一行提示 + 自定义入口 */
+.fallback {
+    margin-top: @gap-lg;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: @gap-md;
+}
+
+.fallbackText {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.linkButton {
+    display: inline-flex;
+    align-items: center;
+    gap: @gap-xs;
+    margin-top: @gap-lg;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent-purple);
+    font-size: 13px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+        opacity: 0.6;
+    }
+}
+
+/* 兜底那一行里的入口不需要再撑上边距 */
+.fallback .linkButton {
+    margin-top: 0;
+}
+
+.customTip {
+    margin-top: @gap-lg;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
 }
 
 .actionBar {

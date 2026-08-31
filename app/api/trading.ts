@@ -3,7 +3,7 @@
 import type {
 	HoldingCardWithPrice,
 	HoldingDetailPayload,
-	Item,
+	ItemWithUsage,
 	TradeDetail,
 	TradeWithItem,
 } from "../features/trade-record/types";
@@ -20,6 +20,21 @@ interface RequestOptions {
 	signal?: AbortSignal;
 }
 
+/**
+ * 带上 HTTP 状态和服务端给的机器可读原因。
+ * 页面偶尔需要按原因分叉（例如上游限流时给重试按钮加冷却），只有中文文案不够用。
+ */
+export class ApiError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+		readonly reason?: string,
+	) {
+		super(message);
+		this.name = "ApiError";
+	}
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 	const response = await fetch(path, {
 		credentials: "same-origin",
@@ -29,9 +44,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 	const payload = await response.json().catch(() => null);
 	if (!response.ok) {
-		const message =
-			(payload as { error?: string } | null)?.error || `请求失败（${response.status}）`;
-		throw new Error(message);
+		const body = payload as { error?: string; reason?: string } | null;
+		throw new ApiError(
+			body?.error || `请求失败（${response.status}）`,
+			response.status,
+			body?.reason,
+		);
 	}
 	return payload as T;
 }
@@ -45,13 +63,28 @@ function postJson<T>(path: string, body: unknown, options: RequestOptions = {}) 
 	});
 }
 
+function patchJson<T>(path: string, body: unknown, options: RequestOptions = {}) {
+	return request<T>(path, {
+		method: "PATCH",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+		signal: options.signal,
+	});
+}
+
 // ---------- 标的 ----------
 export const fetchItems = (options: RequestOptions = {}) =>
-	request<{ items: Item[] }>("/api/items", { signal: options.signal });
+	request<{ items: ItemWithUsage[] }>("/api/items", { signal: options.signal });
 
 export const createItem = (
 	payload: { name: string; symbol: string; description: string; exchange: string },
 ) => postJson<{ success: true }>("/api/items", payload);
+
+/** 改条目的名称 / 代码 / 备注。代码传空串即清空（后端存 NULL，之后不再拉行情） */
+export const updateItem = (
+	id: number,
+	payload: { name: string; symbol: string; description: string },
+) => patchJson<{ success: true }>(`/api/items/${id}`, payload);
 
 export const deleteItem = (id: number) =>
 	request<{ success: true; deletedId: number }>(`/api/items/${id}`, { method: "DELETE" });
@@ -118,6 +151,14 @@ export const sellTrade = (id: number, payload: { price: number; qty: number }) =
 
 export const deleteTrade = (id: number) =>
 	request<{ deleted: true }>(`/api/trades/${id}`, { method: "DELETE" });
+
+/** 改买入时刻。传完整的 `YYYY-MM-DD HH:mm:ss`，走势页改日期时会保留原时分秒 */
+export const updateTradeBuyTime = (id: number, buyTime: string) =>
+	patchJson<{ success: true }>(`/api/trades/${id}`, { buyTime });
+
+/** 改某条卖出记录的成交时刻，格式同上 */
+export const updateSellRecordTime = (id: number, sellTime: string) =>
+	patchJson<{ success: true }>(`/api/sell-records/${id}`, { sellTime });
 
 // ---------- 行情搜索 ----------
 export const searchStocks = (q: string, options: RequestOptions = {}) =>

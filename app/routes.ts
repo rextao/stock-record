@@ -9,6 +9,8 @@ export default [
 
     route("items/manage", "routes/items/manage.tsx"),
     route("items/new", "routes/items/new.tsx"),
+    // 编辑条目：改名 / 补代码，避免用户为了改一个字段去删掉整段交易历史
+    route("items/edit/:id", "routes/items/edit.tsx"),
 
 
     route("trade/new", "routes/trade/new.tsx"),

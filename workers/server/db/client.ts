@@ -1,5 +1,6 @@
 import type {
     Item,
+    ItemWithUsage,
     Trade,
     SellRecord,
     TradeWithItem,
@@ -46,26 +47,72 @@ export class TradingDB {
     }
 
     // ============== Items ==============
-    async getAllItems(): Promise<Item[]> {
-        const { results } = await this.db.prepare('SELECT * FROM items ORDER BY created_at DESC').all<Item>();
+    // 顺带查出关联记录数：删除确认弹窗要显示影响范围，避免误删掉整段交易历史
+    async getAllItems(): Promise<ItemWithUsage[]> {
+        const { results } = await this.db
+            .prepare(
+                `SELECT i.*,
+                        (SELECT COUNT(*) FROM trades t WHERE t.item_id = i.id) AS trade_count,
+                        (SELECT COUNT(*) FROM sell_records s
+                          WHERE s.trade_id IN (SELECT id FROM trades WHERE item_id = i.id)) AS sell_count
+                 FROM items i
+                 ORDER BY i.created_at DESC`,
+            )
+            .all<ItemWithUsage>();
         return results;
+    }
+
+    async getItem(id: number): Promise<Item | null> {
+        return await this.db.prepare('SELECT * FROM items WHERE id = ?').bind(id).first<Item>();
     }
 
     // ==========================================
     // 条目管理 (Items)
     // ==========================================
 
-    // 1. 新增条目 (带重复校验)
+    // 1. 新增条目 (带重复校验)。自定义条目可以没有代码，此时 symbol 存 NULL
     async createItem(item: { name: string; symbol: string; description: string; exchange: string }): Promise<void> {
-        // 校验是否已经存在相同 symbol 的股票
-        const existing = await this.db.prepare('SELECT id FROM items WHERE symbol = ?').bind(item.symbol).first();
+        const symbol = item.symbol.trim();
+        // 无代码的自定义条目按名称去重：空字符串当唯一键会让第二个自定义条目误判成「已存在」
+        const existing = symbol
+            ? await this.db.prepare('SELECT id FROM items WHERE symbol = ?').bind(symbol).first()
+            : await this.db
+                  .prepare("SELECT id FROM items WHERE name = ? AND (symbol IS NULL OR symbol = '')")
+                  .bind(item.name)
+                  .first();
         if (existing) {
-            throw new Error(`标的 ${item.symbol} 已存在，请勿重复添加`);
+            throw new Error(`${symbol || item.name} 已存在，请勿重复添加`);
         }
 
         await this.db.prepare(
             'INSERT INTO items (name, symbol, description, exchange, created_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind(item.name, item.symbol, item.description, item.exchange, this.nowLocalTime()).run();
+        ).bind(item.name, symbol || null, item.description, item.exchange, this.nowLocalTime()).run();
+    }
+
+    // 1.5 编辑条目。查重口径与 createItem 一致，只是要把自己排除掉；
+    // 代码留空同样存 NULL（不是 ''），否则 getQuote 那边的空值短路和这里的查重都会走错分支
+    async updateItem(
+        id: number,
+        item: { name: string; symbol: string; description: string },
+    ): Promise<void> {
+        const existingItem = await this.getItem(id);
+        if (!existingItem) throw new Error('条目不存在');
+
+        const symbol = item.symbol.trim();
+        const duplicate = symbol
+            ? await this.db.prepare('SELECT id FROM items WHERE symbol = ? AND id != ?').bind(symbol, id).first()
+            : await this.db
+                  .prepare("SELECT id FROM items WHERE name = ? AND (symbol IS NULL OR symbol = '') AND id != ?")
+                  .bind(item.name, id)
+                  .first();
+        if (duplicate) {
+            throw new Error(`${symbol || item.name} 已存在，请勿重复添加`);
+        }
+
+        await this.db
+            .prepare('UPDATE items SET name = ?, symbol = ?, description = ? WHERE id = ?')
+            .bind(item.name, symbol || null, item.description, id)
+            .run();
     }
 
     // 2. 删除条目 (级联删除关联的 trades 和 sell_records)
@@ -308,6 +355,19 @@ export class TradingDB {
             this.db.prepare('DELETE FROM sell_records WHERE trade_id = ?').bind(id),
             this.db.prepare('DELETE FROM trades WHERE id = ?').bind(id),
         ]);
+    }
+
+    // 只改买入时刻（走势页上纠正买卖点日期用），其余字段不动
+    async updateTradeBuyTime(id: number, buyTime: string): Promise<void> {
+        await this.db.prepare('UPDATE trades SET buy_time = ? WHERE id = ?').bind(buyTime, id).run();
+    }
+
+    // 同上，改某条卖出记录的成交时刻
+    async updateSellRecordTime(id: number, sellTime: string): Promise<void> {
+        await this.db
+            .prepare('UPDATE sell_records SET sell_time = ? WHERE id = ?')
+            .bind(sellTime, id)
+            .run();
     }
 
     // 某个标的的持仓详情：未平仓 / 已平仓两组交易 + 聚合信息

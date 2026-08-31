@@ -41,7 +41,8 @@ export function withStockCache(provider: IStockProvider, options: StockCacheOpti
 	};
 
 	async function getQuote(symbol: string, quoteOptions: { force?: boolean } = {}): Promise<LiveQuote> {
-		const normalized = symbol.trim().toUpperCase();
+		// 自定义条目的 symbol 可能是 NULL，这里统一兜住，不要在 trim 上抛 TypeError
+		const normalized = String(symbol ?? "").trim().toUpperCase();
 		if (!normalized) return { price: null, fetchedAt: null, error: "EMPTY_SYMBOL" };
 
 		const key = quoteKey(normalized);

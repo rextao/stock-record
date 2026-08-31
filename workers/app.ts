@@ -40,6 +40,9 @@ async function readPayload(request: Request): Promise<Record<string, unknown>> {
 const num = (value: unknown) => Number(value);
 const str = (value: unknown) => (value == null ? "" : String(value));
 
+// 成交时刻：日期必填，后面的时分秒可选（走势页改日期时会把原时分秒一起带回来）
+const TIME_PATTERN = /^\d{4}-\d{2}-\d{2}([ T].*)?$/;
+
 // 路径里的标的代码可能带 %2F 之类的转义，解不开就按原样用
 function decodeSegment(segment: string): string {
 	try {
@@ -64,7 +67,8 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 			const body = await readPayload(request);
 			const name = str(body.name);
 			const symbol = str(body.symbol);
-			if (!name || !symbol) return fail("数据不完整");
+			// 代码可以为空：自定义条目允许只有名称，此时不拉行情
+			if (!name) return fail("请填写条目名称");
 			await db.createItem({
 				name,
 				symbol,
@@ -78,6 +82,20 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 			if (!id) return fail("无效的条目 ID");
 			await db.deleteItem(id);
 			return json({ success: true, deletedId: id });
+		}
+		// 编辑条目：只放开名称、代码、备注。exchange 是搜索结果带来的元数据，手改没有意义
+		if (second && method === "PATCH") {
+			const id = num(second);
+			if (!id) return fail("无效的条目 ID");
+			const body = await readPayload(request);
+			const name = str(body.name).trim();
+			if (!name) return fail("请填写条目名称");
+			await db.updateItem(id, {
+				name,
+				symbol: str(body.symbol),
+				description: str(body.description),
+			});
+			return json({ success: true });
 		}
 	}
 
@@ -150,11 +168,32 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 			await db.deleteTrade(num(second));
 			return json({ deleted: true });
 		}
+		// 只改买入时刻：走势页上纠正买卖点日期，不动价格和数量
+		if (second && !third && method === "PATCH") {
+			const id = num(second);
+			if (!id) return fail("无效的交易 ID");
+			const body = await readPayload(request);
+			const buyTime = str(body.buyTime).trim();
+			if (!TIME_PATTERN.test(buyTime)) return fail("买入时间格式不正确");
+			await db.updateTradeBuyTime(id, buyTime);
+			return json({ success: true });
+		}
 		if (second && third === "sell" && method === "POST") {
 			const body = await readPayload(request);
 			await db.recordSell(num(second), num(body.price), num(body.qty));
 			return json({ success: true });
 		}
+	}
+
+	// ---------- 卖出记录（sell_records）----------
+	if (resource === "sell-records" && second && !third && method === "PATCH") {
+		const id = num(second);
+		if (!id) return fail("无效的卖出记录 ID");
+		const body = await readPayload(request);
+		const sellTime = str(body.sellTime).trim();
+		if (!TIME_PATTERN.test(sellTime)) return fail("卖出时间格式不正确");
+		await db.updateSellRecordTime(id, sellTime);
+		return json({ success: true });
 	}
 
 	// ---------- 行情搜索 ----------
@@ -207,9 +246,20 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 			}
 			return json(history);
 		} catch (error: any) {
+			// Yahoo 按出口 IP 限流很常见（429），它和「代码不存在」「上游真挂了」要分开报，
+			// 前端靠 reason 决定要不要给重试按钮上冷却
+			const reason: string = error?.message || "HISTORY_UPSTREAM_ERROR";
+			const limited = reason === "HISTORY_RATE_LIMITED";
 			const message =
-				error?.message === "NO_HISTORY" ? "未取到该标的历史数据" : "历史行情接口异常，请稍后重试";
-			return json({ symbol, range: rangeParam, candles: [], error: message }, 502);
+				reason === "NO_HISTORY"
+					? "未取到该标的历史数据"
+					: limited
+						? "行情源限流，请稍后重试"
+						: "历史行情接口异常，请稍后重试";
+			return json(
+				{ symbol, range: rangeParam, candles: [], reason, error: message },
+				limited ? 429 : 502,
+			);
 		}
 	}
 

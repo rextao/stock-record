@@ -52,6 +52,8 @@ export function HoldingCard({ holding }: { holding: any }) {
     }, [holding.live_price, holding.live_price_at, holding.live_price_error]);
 
     const hasPrice = quote.price != null;
+    // 自定义条目可以没有代码：没代码就没有行情，别把它当成「报价异常」
+    const hasSymbol = !!String(holding.item_symbol || '').trim();
     const age = quote.fetchedAt != null ? now - quote.fetchedAt : null;
     const stale = hasPrice && age != null && age > STALE_AFTER_MS;
 
@@ -89,25 +91,33 @@ export function HoldingCard({ holding }: { holding: any }) {
                         ) : (
                             <span
                                 className={clsx(styles.livePriceValue, styles.livePriceMissing)}
-                                title={quote.error === 'NO_QUOTE' ? '未取到该标的报价' : quote.error || '报价异常'}
+                                title={
+                                    !hasSymbol
+                                        ? '该条目没有登记股票代码，不拉行情'
+                                        : quote.error === 'NO_QUOTE'
+                                          ? '未取到该标的报价'
+                                          : quote.error || '报价异常'
+                                }
                             >
                                 --
                             </span>
                         )}
-                        {!hasPrice && !refreshing && (
+                        {!hasPrice && !refreshing && hasSymbol && (
                             <AlertTriangle size={13} className={styles.livePriceAlert} aria-hidden />
                         )}
-                        <button
-                            type="button"
-                            className={clsx(styles.refreshButton, refreshing && styles.refreshing)}
-                            aria-label="刷新现价"
-                            aria-busy={refreshing}
-                            // pointerdown 也要拦：SwipeAction 是在指针事件上做手势识别的
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onClick={handleRefresh}
-                        >
-                            <RefreshCw size={14} />
-                        </button>
+                        {hasSymbol && (
+                            <button
+                                type="button"
+                                className={clsx(styles.refreshButton, refreshing && styles.refreshing)}
+                                aria-label="刷新现价"
+                                aria-busy={refreshing}
+                                // pointerdown 也要拦：SwipeAction 是在指针事件上做手势识别的
+                                onPointerDown={(event) => event.stopPropagation()}
+                                onClick={handleRefresh}
+                            >
+                                <RefreshCw size={14} />
+                            </button>
+                        )}
                     </div>
                 </div>
                 {/* 第二行放次要信息，现价过期的提示也挪到这里 */}
@@ -147,20 +157,29 @@ export function HoldingCard({ holding }: { holding: any }) {
 
             {/* 底部栏：左边走势入口，右边展开/收起箭头，正好用掉这行本来空着的地方 */}
             <div className={styles.toggleRow}>
-                <button
-                    type="button"
-                    className={styles.historyButton}
-                    // 与刷新按钮同理：外层的「点击进详情」和 SwipeAction 手势都要拦住
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        event.preventDefault();
-                        navigate(`/holdings/${holding.item_id}/history`);
-                    }}
-                >
-                    <ChartLine size={14} />
-                    走势
-                </button>
+                {/* 没登记代码的条目拉不到历史行情，入口直接不给，点进去只会是错误页 */}
+                {hasSymbol ? (
+                    <button
+                        type="button"
+                        className={styles.historyButton}
+                        // 与刷新按钮同理：外层的「点击进详情」和 SwipeAction 手势都要拦住
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            event.preventDefault();
+                            // 名称和代码随导航带过去，走势页首屏就能出 NavBar 标题和曲线，
+                            // 不用等持仓详情回来（那会让点击看起来像卡住）
+                            navigate(`/holdings/${holding.item_id}/history`, {
+                                state: { name: holding.item_name, symbol: holding.item_symbol },
+                            });
+                        }}
+                    >
+                        <ChartLine size={14} />
+                        走势
+                    </button>
+                ) : (
+                    <span />
+                )}
                 {holding.sub_trades.length > 0 && (
                     <div
                         className={styles.toggleButton}

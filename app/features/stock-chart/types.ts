@@ -28,13 +28,17 @@ export function isIntradayRange(range: HistoryRange): boolean {
     return RANGE_INTERVALS[range] !== '1d';
 }
 
-export const DEFAULT_HISTORY_RANGE: HistoryRange = '3mo';
+export const DEFAULT_HISTORY_RANGE: HistoryRange = '5d';
 
 export function isHistoryRange(value: string): value is HistoryRange {
     return (HISTORY_RANGES as string[]).includes(value);
 }
 
-/** 折线上的一个点。只留收盘价：折线图用不到 OHLC，少传一半字节 */
+/**
+ * 图上的一个点。close 是主力字段（折线、买卖点对齐都用它）；
+ * o/h/l 只为 K 线模式服务，可能缺失（老的 D1 行、或数据源没给），画之前先用 canDrawCandles 判一次。
+ * 四个价都已按 adjclose 同比例复权，互相之间可比。
+ */
 export interface PriceCandle {
     /**
      * 该点所属的交易日（交易所当地时区），YYYY-MM-DD。
@@ -44,6 +48,32 @@ export interface PriceCandle {
     /** 该点的时间戳，epoch ms。日内粒度下靠它区分同一天内的点 */
     t: number;
     close: number;
+    /** 开盘价（已复权） */
+    o?: number;
+    /** 最高价（已复权） */
+    h?: number;
+    /** 最低价（已复权） */
+    l?: number;
+}
+
+/**
+ * K 线最多画多少根。再多的话手机宽度下每根不到 1px，实体和影线糊成一片色块，
+ * 不如直接退回折线 —— 所以长区间不禁用开关，只是渲染成折线并给一行提示。
+ */
+export const MAX_CANDLE_BARS = 90;
+
+/** 这组数据能不能画成 K 线：点数合适 + 每根都带齐 OHLC */
+export function canDrawCandles(candles: PriceCandle[]): boolean {
+    if (candles.length < 2 || candles.length > MAX_CANDLE_BARS) return false;
+    return candles.every(
+        (candle) =>
+            typeof candle.o === 'number' &&
+            typeof candle.h === 'number' &&
+            typeof candle.l === 'number' &&
+            Number.isFinite(candle.o) &&
+            Number.isFinite(candle.h) &&
+            Number.isFinite(candle.l),
+    );
 }
 
 export interface PriceHistory {
@@ -64,6 +94,13 @@ export interface PriceHistory {
 export interface TradeMark {
     /** 成交日，YYYY-MM-DD */
     date: string;
+    /**
+     * 这个标记对应的数据库记录 id：买点是 trades.id，卖点是 sell_records.id。
+     * 走势页要就地改成交日期，得能定位回源记录。
+     */
+    sourceId: number;
+    /** 成交时刻原文（YYYY-MM-DD HH:mm:ss）。改日期时保留后面的时分秒 */
+    time: string;
     price: number;
     quantity: number;
     side: 'buy' | 'sell';

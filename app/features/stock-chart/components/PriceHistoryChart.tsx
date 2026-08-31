@@ -1,6 +1,6 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { readToken, useThemeStore } from '~/common/theme/themeStore'
-import type { PriceCandle, TradeMark } from '../types'
+import { canDrawCandles, type PriceCandle, type TradeMark } from '../types'
 import styles from './PriceHistoryChart.module.less'
 
 /**
@@ -35,6 +35,11 @@ interface Props {
     intraday?: boolean
     /** 交易所时区偏移（秒），把时间戳还原成当地时间用 */
     utcOffsetSeconds?: number
+    /**
+     * 主体画法。'candle' 但数据画不了 K 线（点太多或缺 OHLC）时内部自动退回折线，
+     * 提示语由调用方给 —— 组件里没有区间概念，说不清为什么退。
+     */
+    mode?: 'line' | 'candle'
 }
 
 interface Palette {
@@ -66,6 +71,10 @@ const GRID_LINES = 4
 const MERGE_PX = 20
 const DOT_R = 3
 const BUBBLE_H = 16
+/** K 线实体宽度：占单格间距的比例，再按上下限收一收 */
+const BODY_RATIO = 0.62
+const BODY_W_MIN = 1.5
+const BODY_W_MAX = 9
 /** 圆点到标签气泡的垂直间距，中间用一根细线连起来 */
 const BUBBLE_GAP = 12
 /** 点击命中半径 */
@@ -189,7 +198,8 @@ function drawChart(
     selectedKey: string | null,
     palette: Palette,
     offsetSeconds: number,
-    intraday: boolean
+    intraday: boolean,
+    candleMode: boolean
 ): Placed[] {
     ctx.clearRect(0, 0, width, height)
     if (!candles.length) return []
@@ -205,6 +215,13 @@ function drawChart(
 
     // 成交价和参考线价格都参与取值域，否则它们落在区间外时会贴边看不出位置
     const values = candles.map((c) => c.close).concat(groups.map((g) => g.price))
+    // K 线要把影线的极值也算进去，不然最高/最低会被裁掉
+    if (candleMode) {
+        candles.forEach((c) => {
+            if (typeof c.h === 'number') values.push(c.h)
+            if (typeof c.l === 'number') values.push(c.l)
+        })
+    }
     if (lastSell) values.push(lastSell.price)
     let min = Math.min(...values)
     let max = Math.max(...values)
@@ -245,19 +262,47 @@ function drawChart(
         })
     }
 
-    linePath()
-    ctx.lineTo(xAt(candles.length - 1), PAD_T + h)
-    ctx.lineTo(xAt(0), PAD_T + h)
-    ctx.closePath()
-    ctx.fillStyle = palette.fill
-    ctx.fill()
+    if (candleMode) {
+        // 蜡烛：影线 high→low 一根细线，实体 open↔close。涨红跌绿都画实心 —— 移动端空心
+        // 描边在 1~2px 宽的实体上只会剩一团边框，看不出颜色
+        const slot = w / Math.max(candles.length - 1, 1)
+        const bodyW = Math.min(Math.max(slot * BODY_RATIO, BODY_W_MIN), BODY_W_MAX)
+        candles.forEach((c, i) => {
+            const open = typeof c.o === 'number' ? c.o : c.close
+            const high = typeof c.h === 'number' ? c.h : Math.max(open, c.close)
+            const low = typeof c.l === 'number' ? c.l : Math.min(open, c.close)
+            const x = xAt(i)
+            const color = c.close >= open ? palette.buy : palette.sell
 
-    linePath()
-    ctx.strokeStyle = palette.line
-    ctx.lineWidth = 2
-    ctx.lineJoin = 'round'
-    ctx.lineCap = 'round'
-    ctx.stroke()
+            ctx.strokeStyle = color
+            ctx.lineWidth = 1
+            ctx.lineCap = 'butt'
+            ctx.beginPath()
+            ctx.moveTo(x, yAt(high))
+            ctx.lineTo(x, yAt(low))
+            ctx.stroke()
+
+            const top = yAt(Math.max(open, c.close))
+            const bottom = yAt(Math.min(open, c.close))
+            ctx.fillStyle = color
+            // 平盘那根高度会是 0，兜一个 1px 否则整根消失
+            ctx.fillRect(x - bodyW / 2, top, bodyW, Math.max(bottom - top, 1))
+        })
+    } else {
+        linePath()
+        ctx.lineTo(xAt(candles.length - 1), PAD_T + h)
+        ctx.lineTo(xAt(0), PAD_T + h)
+        ctx.closePath()
+        ctx.fillStyle = palette.fill
+        ctx.fill()
+
+        linePath()
+        ctx.strokeStyle = palette.line
+        ctx.lineWidth = 2
+        ctx.lineJoin = 'round'
+        ctx.lineCap = 'round'
+        ctx.stroke()
+    }
 
     // 最近一次卖价的水平参考线
     if (lastSell) {
@@ -416,12 +461,15 @@ export default function PriceHistoryChart({
     onSelect,
     intraday = false,
     utcOffsetSeconds = 0,
+    mode = 'line',
 }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     // 命中测试要用最后一次绘制出来的坐标，存在 ref 里，重绘时整体替换
     const placedRef = useRef<Placed[]>([])
     // Canvas 不会因为主题变化重绘，把 resolved 放进依赖显式触发
     const resolvedTheme = useThemeStore((s) => s.resolved)
+    // 想画 K 线但数据不支持时静默退回折线，页面上的提示由 history.tsx 给
+    const candleMode = mode === 'candle' && canDrawCandles(candles)
 
     useEffect(() => {
         const canvas = canvasRef.current
@@ -463,7 +511,8 @@ export default function PriceHistoryChart({
                 selectedKey,
                 palette,
                 utcOffsetSeconds,
-                intraday
+                intraday,
+                candleMode
             )
         }
 
@@ -473,7 +522,7 @@ export default function PriceHistoryChart({
         const observer = new ResizeObserver(render)
         observer.observe(canvas)
         return () => observer.disconnect()
-    }, [candles, marks, lastSell, selectedKey, resolvedTheme, intraday, utcOffsetSeconds])
+    }, [candles, marks, lastSell, selectedKey, resolvedTheme, intraday, utcOffsetSeconds, candleMode])
 
     const handleTap = (event: ReactPointerEvent<HTMLCanvasElement>) => {
         if (!onSelect) return

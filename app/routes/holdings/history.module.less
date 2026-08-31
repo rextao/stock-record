@@ -61,7 +61,7 @@
     display: flex;
     /* 六个区间要在一行里排开，间距和字号都得收一点 */
     gap: @gap-xs;
-    margin: @gap-lg 0;
+    margin: @gap-lg 0 @gap-sm;
     flex-shrink: 0;
 }
 
@@ -86,6 +86,51 @@
     background-color: var(--pill-purple-bg);
     color: var(--accent-purple);
     font-weight: 600;
+}
+
+.modeBar {
+    display: flex;
+    align-items: center;
+    gap: @gap-xs;
+    margin-bottom: @gap-md;
+    flex-shrink: 0;
+}
+
+.modeButton {
+    /* 只有两项，不跟区间那排一样铺满，固定宽度更像开关 */
+    min-width: 52px;
+    padding: 5px 0;
+    border: 1px solid var(--border);
+    border-radius: @radius-pill;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+        opacity: 0.6;
+    }
+}
+
+.modeButtonActive {
+    border-color: var(--accent-purple);
+    background-color: var(--pill-purple-bg);
+    color: var(--accent-purple);
+    font-weight: 600;
+}
+
+.modeHint {
+    flex: 1;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-align: right;
+}
+
+/* 冷却期间不让切区间：换一个区间同样要打一次上游，限流时只会更糟 */
+.rangeButton:disabled {
+    opacity: 0.4;
+    cursor: default;
 }
 
 .chartArea {
@@ -119,6 +164,13 @@
 
     &:active {
         opacity: 0.6;
+    }
+
+    &:disabled {
+        border-color: var(--border);
+        background-color: transparent;
+        color: var(--text-muted);
+        cursor: default;
     }
 }
 
@@ -168,9 +220,27 @@
     font-size: 12px;
 }
 
+/* 日期本身就是改日期的入口，按钮外观去掉，只留一个小日历图标提示可点 */
 .detailDate {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    border: none;
+    background: none;
     color: var(--text-muted);
     font-family: monospace;
+    font-size: 12px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+        opacity: 0.6;
+    }
+
+    &:disabled {
+        opacity: 0.4;
+    }
 }
 
 .detailValue {

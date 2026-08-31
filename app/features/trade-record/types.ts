@@ -9,6 +9,15 @@ export interface Item {
 	created_at: string;
 }
 
+/**
+ * 列表接口返回的条目，额外带上关联记录数。
+ * 删除条目会级联清空这些记录且无法恢复，确认弹窗要把影响范围报给用户。
+ */
+export interface ItemWithUsage extends Item {
+	trade_count: number;
+	sell_count: number;
+}
+
 export interface Trade {
 	id: number;
 	item_id: number;

@@ -24,8 +24,11 @@ export class YahooHistoryProvider implements IStockHistoryProvider {
         });
 
         if (!response.ok) {
-            // 404 是「这个代码 Yahoo 不认识」，与限流、封 IP 是两种问题，前端文案要分开
-            throw new Error(response.status === 404 ? "NO_HISTORY" : "HISTORY_UPSTREAM_ERROR");
+            // 三种情况的文案和处置都不同，别合并：
+            // 404 = 这个代码 Yahoo 不认识；429 = 按出口 IP 限流（等一会就好，别让用户狂点）；其余 = 真异常
+            if (response.status === 404) throw new Error("NO_HISTORY");
+            if (response.status === 429) throw new Error("HISTORY_RATE_LIMITED");
+            throw new Error("HISTORY_UPSTREAM_ERROR");
         }
 
         const data = (await response.json()) as any;
@@ -38,8 +41,12 @@ export class YahooHistoryProvider implements IStockHistoryProvider {
         const stamps: unknown[] = Array.isArray(result.timestamp) ? result.timestamp : [];
         // adjclose 在有拆股/分红时才是连续的曲线，没有它再退回原始收盘价
         const adjusted = result.indicators?.adjclose?.[0]?.adjclose;
-        const raw = result.indicators?.quote?.[0]?.close;
-        const closes: unknown[] = Array.isArray(adjusted) ? adjusted : Array.isArray(raw) ? raw : [];
+        const quote = result.indicators?.quote?.[0] ?? {};
+        const rawCloses: unknown[] = Array.isArray(quote.close) ? quote.close : [];
+        const opens: unknown[] = Array.isArray(quote.open) ? quote.open : [];
+        const highs: unknown[] = Array.isArray(quote.high) ? quote.high : [];
+        const lows: unknown[] = Array.isArray(quote.low) ? quote.low : [];
+        const closes: unknown[] = Array.isArray(adjusted) ? adjusted : rawCloses;
 
         const candles: PriceCandle[] = [];
         for (let i = 0; i < stamps.length; i++) {
@@ -47,10 +54,34 @@ export class YahooHistoryProvider implements IStockHistoryProvider {
             const close = closes[i];
             // 停牌 / 无成交的交易日 Yahoo 会给 null，跳过而不是补 0
             if (typeof stamp !== "number" || typeof close !== "number" || !Number.isFinite(close)) continue;
-            candles.push({ date: toYmd(stamp, offset), t: stamp * 1000, close });
+            // Yahoo 只给 close 的复权价，open/high/low 是原始价。同一根上按同一个比例缩放，
+            // K 线才和折线在一个坐标系里；否则除权那天实体会整体错位。
+            const factor = adjustFactor(rawCloses[i], close);
+            const candle: PriceCandle = { date: toYmd(stamp, offset), t: stamp * 1000, close };
+            const o = scale(opens[i], factor);
+            const h = scale(highs[i], factor);
+            const l = scale(lows[i], factor);
+            if (o != null && h != null && l != null) {
+                candle.o = o;
+                candle.h = h;
+                candle.l = l;
+            }
+            candles.push(candle);
         }
         return { candles, utcOffsetSeconds: offset };
     }
+}
+
+/** close 的复权比例。拿不到原始收盘价或它为 0 时按 1 处理（等于不缩放） */
+function adjustFactor(rawClose: unknown, adjustedClose: number): number {
+    if (typeof rawClose !== "number" || !Number.isFinite(rawClose) || rawClose <= 0) return 1;
+    const factor = adjustedClose / rawClose;
+    return Number.isFinite(factor) && factor > 0 ? factor : 1;
+}
+
+function scale(value: unknown, factor: number): number | undefined {
+    if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+    return value * factor;
 }
 
 /**

@@ -47,9 +47,21 @@
     align-items: center;
 }
 
+.rowText {
+    display: flex;
+    flex-direction: column;
+    gap: @gap-xs;
+    min-width: 0;
+}
+
 .rowName {
     font-size: 16px;
     color: var(--text-primary);
+}
+
+.rowMeta {
+    font-size: 12px;
+    color: var(--text-muted);
 }
 
 .rowArrow {
@@ -68,5 +80,20 @@
 
 /* Dialog 里的危险操作文案 */
 .dangerText {
+    color: var(--pnl-up);
+}
+
+/* 删除确认弹窗：一句主问句 + 一行影响范围 */
+.confirmBody {
+    display: flex;
+    flex-direction: column;
+    gap: @gap-sm;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    text-align: left;
+}
+
+.confirmDanger {
     color: var(--pnl-up);
 }
