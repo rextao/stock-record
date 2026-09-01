@@ -13,6 +13,12 @@
  * 从空白处下拉自然没反应（卡片多到撑满屏幕就「好了」，纯属巧合）。
  * 这里把它和内部的 content 一路撑到 flex:1，空白区域也归它管。
  * 注意不要给它们加 min-height:0，否则卡片多时无法把 .page 顶高、外层 .main 就不滚了。
+ *
+ * 这样一来 head 就从 block 子元素变成了 flex item，同容器里的 content 又是 flex:1，
+ * 卡片多到要滚动时没有富余空间，head 那 40px 有被 flex-shrink 吃掉的风险，
+ * 所以显式 flex-shrink: 0 兜住。
+ * （注：曾把「下拉毫无反应 + head 盒子恒为 0」全部归因于这里的 flex 压缩，那是误判 —— 真凶是
+ * antd 运行时量出 headHeight = 0，见 home.tsx 里 PULL_HEAD_HEIGHT 的注释。）
  */
 .scrollArea {
     flex: 1;
@@ -23,6 +29,11 @@
         flex: 1;
         display: flex;
         flex-direction: column;
+    }
+
+    /* 下拉时 head 要能真的撑开，不能被下面的 content 挤没 */
+    :global(.adm-pull-to-refresh-head) {
+        flex-shrink: 0;
     }
 
     :global(.adm-pull-to-refresh-content) {

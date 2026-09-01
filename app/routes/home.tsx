@@ -9,6 +9,20 @@ import { FloatingActionButton } from "../common/components/FloatingActionButton"
 import { fetchHoldings, sellByItem } from "../api/trading";
 import styles from "./home.module.less";
 
+/**
+ * 下拉刷新的头部高度与触发阈值必须显式写死，不能用 antd-mobile 的默认值。
+ *
+ * 默认值是 render 时现算的 convertPx(40)/convertPx(60)，而 convertPx 靠往 body 插的
+ * .adm-px-tester 探针实测高度换算 —— 那条 CSS 在 antd 的动态 chunk 里，不在 index.html 的
+ * head 中，是首页渲染时才随 <Links/> 插入的，所以首屏第一次 render 量出来是 0。
+ * headHeight 为 0 时橡皮筋公式 rubberbandIfOutOfBounds(y, 0, 0, headHeight * 5, 0.5) 恒返回 0，
+ * status 永远停在 pulling，松手只回弹、不触发 onRefresh —— 表现就是「下拉完全没反应」。
+ * 又因为首页数据走 clientLoader、渲染后没有 state 变化，整个生命周期只 render 一次，
+ * 那个 0 会被一直留住；进二级页再回来重新 mount 时 CSS 已生效，所以才「返回后就好了」。
+ */
+const PULL_HEAD_HEIGHT = 40;
+const PULL_THRESHOLD = 60;
+
 // ==========================================
 // 客户端数据加载（纯 CSR，全部走 /api）
 // ==========================================
@@ -71,7 +85,11 @@ export default function HomeRoute() {
 			</div>
 
 			<div className={styles.scrollArea}>
-				<PullToRefresh onRefresh={handleRefresh}>
+				<PullToRefresh
+					onRefresh={handleRefresh}
+					headHeight={PULL_HEAD_HEIGHT}
+					threshold={PULL_THRESHOLD}
+				>
 					<div className={styles.list}>
 						{holdings.length === 0 ? (
 							<EmptyState

@@ -24,6 +24,7 @@ import {
     type TradeMark,
 } from '../../features/stock-chart/types'
 import type { HoldingDetailPayload, HoldingTradeDetail } from '../../features/trade-record/types'
+import { replaceZonedYmd, toZonedYmd } from '../../utils/datetime'
 import styles from './history.module.less'
 
 const RANGE_LABELS: Record<HistoryRange, string> = {
@@ -60,13 +61,17 @@ function fromYmd(ymd: string): Date {
 /**
  * 交易记录 → 折线上的买卖点。
  * 注意 trades.current_price 存的是**买入价**（字段名是历史遗留），别当成现价用。
+ *
+ * `date` 必须是**交易所当地交易日**：DB 里存的是 UTC 墙上时间，直接 slice 会把
+ * 美东盘后（UTC 已过 0 点）的成交推到下一天，图上的点就钉到了错的 K 线上。
+ * offset 由行情接口带回（`PriceHistory.utcOffsetSeconds`）。
  */
-function toMarks(trades: HoldingTradeDetail[]): TradeMark[] {
+function toMarks(trades: HoldingTradeDetail[], offsetSeconds: number): TradeMark[] {
     const marks: TradeMark[] = []
     trades.forEach((trade) => {
         if (trade.buy_time) {
             marks.push({
-                date: trade.buy_time.slice(0, 10),
+                date: toZonedYmd(trade.buy_time, offsetSeconds),
                 sourceId: trade.id,
                 time: trade.buy_time,
                 price: trade.current_price,
@@ -77,7 +82,7 @@ function toMarks(trades: HoldingTradeDetail[]): TradeMark[] {
         trade.sell_records?.forEach((record) => {
             if (!record.sell_time) return
             marks.push({
-                date: record.sell_time.slice(0, 10),
+                date: toZonedYmd(record.sell_time, offsetSeconds),
                 sourceId: record.id,
                 time: record.sell_time,
                 price: record.sell_price,
@@ -88,11 +93,11 @@ function toMarks(trades: HoldingTradeDetail[]): TradeMark[] {
             })
         })
     })
-    return marks.sort((a, b) => a.date.localeCompare(b.date))
+    return marks.sort((a, b) => a.time.localeCompare(b.time))
 }
 
 /** 最近一次卖出：水平参考线的价格和这笔的收益 */
-function toLastSell(trades: HoldingTradeDetail[]): LastSellLine | null {
+function toLastSell(trades: HoldingTradeDetail[], offsetSeconds: number): LastSellLine | null {
     let latestTime = ''
     let line: LastSellLine | null = null
     trades.forEach((trade) => {
@@ -102,7 +107,7 @@ function toLastSell(trades: HoldingTradeDetail[]): LastSellLine | null {
             line = {
                 price: record.sell_price,
                 profit: (record.sell_price - trade.current_price) * record.sell_quantity,
-                date: record.sell_time.slice(0, 10),
+                date: toZonedYmd(record.sell_time, offsetSeconds),
             }
         })
     })
@@ -157,12 +162,14 @@ export default function HoldingsHistoryRoute() {
     const symbol = detail?.holding.item_symbol ?? hint?.symbol ?? ''
     const title = detail?.holding.item_name || hint?.name || '历史走势'
     const candles = history?.candles ?? []
+    // 交易所与 UTC 的时差，行情接口带回；详情先到、行情没回来时按 0 算，行情一到会重算
+    const utcOffsetSeconds = history?.utcOffsetSeconds ?? 0
     const trades = useMemo<HoldingTradeDetail[]>(
         () => (detail ? [...detail.openTrades, ...detail.closedTrades] : []),
         [detail],
     )
-    const marks = useMemo(() => toMarks(trades), [trades])
-    const lastSell = useMemo(() => toLastSell(trades), [trades])
+    const marks = useMemo(() => toMarks(trades, utcOffsetSeconds), [trades, utcOffsetSeconds])
+    const lastSell = useMemo(() => toLastSell(trades, utcOffsetSeconds), [trades, utcOffsetSeconds])
     // 长区间（点数超上限）或缺 OHLC 时 K 线画不了，开关照旧可点，只是渲染折线 + 一行说明
     const candleReady = useMemo(() => canDrawCandles(candles), [candles])
     const candleFellBack = chartMode === 'candle' && candles.length > 0 && !candleReady
@@ -211,7 +218,9 @@ export default function HoldingsHistoryRoute() {
         setDetailKey((n) => n + 1)
     }, [cooldown])
 
-    // 只改日期，时分秒沿用原值：DB 里排序和「最近一次卖出」都依赖完整时刻
+    // 只改日期，时分秒沿用原值：DB 里排序和「最近一次卖出」都依赖完整时刻。
+    // 换日期要在**交易所时区**里换（图上的 mark.date 就是交易所当地日），
+    // 换完再折回 UTC 存，否则改完点又会跳到隔壁那根 K 线上。
     const confirmDate = useCallback(
         async (value: Date) => {
             const mark = editing
@@ -219,7 +228,7 @@ export default function HoldingsHistoryRoute() {
             if (!mark) return
             const ymd = toLocalYmd(value)
             if (ymd === mark.date) return
-            const time = ymd + (mark.time.length > 10 ? mark.time.slice(10) : ' 00:00:00')
+            const time = replaceZonedYmd(mark.time, utcOffsetSeconds, ymd)
             setSaving(true)
             try {
                 if (mark.side === 'buy') await updateTradeBuyTime(mark.sourceId, time)
@@ -232,7 +241,7 @@ export default function HoldingsHistoryRoute() {
                 setSaving(false)
             }
         },
-        [editing],
+        [editing, utcOffsetSeconds],
     )
 
     // 详情已经有结论但仍然没有代码 —— 这才是真的拉不了行情
@@ -326,7 +335,7 @@ export default function HoldingsHistoryRoute() {
                             selectedKey={selected?.key ?? null}
                             onSelect={setSelected}
                             intraday={isIntradayRange(range)}
-                            utcOffsetSeconds={history?.utcOffsetSeconds ?? 0}
+                            utcOffsetSeconds={utcOffsetSeconds}
                             mode={chartMode}
                         />
                     )}

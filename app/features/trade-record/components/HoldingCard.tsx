@@ -1,14 +1,17 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { AlertTriangle, ChartLine, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import clsx from 'clsx';
-import { fetchQuote } from '../../../api/trading';
+import { Toast } from 'antd-mobile';
+import { ApiError, fetchQuote } from '../../../api/trading';
 import { useSharedNow } from '../../../common/hooks/useSharedNow';
+import { formatLocalShort } from '../../../utils/datetime';
 import styles from './HoldingCard.module.less';
 
 const formatPrice = (val: number) => val.toFixed(2);
-// 缩短时间格式，仅显示 MM-DD HH:mm，适合列表展示
-const formatShortTime = (timeStr: string) => (timeStr ? timeStr.slice(5, 16) : '--');
+// 仅显示 MM-DD HH:mm，适合列表展示。DB 存的是 UTC 墙上时间，
+// 不能直接截字符串，要按设备时区折算（详见 app/utils/datetime.ts）
+const formatShortTime = (timeStr: string) => formatLocalShort(timeStr);
 
 // 涨跌统一走同一个判断，避免各处重复写三元
 const pnlClass = (value: number) => (value >= 0 ? styles.up : styles.down);
@@ -17,6 +20,34 @@ const pnlClass = (value: number) => (value >= 0 ? styles.up : styles.down);
 // 判断依据是服务端的抓取时刻，不是行情自带的时间戳 —— 休市时价格本来不动，
 // 用行情时间戳会让所有标的一直是黄色，等于没有提示。
 const STALE_AFTER_MS = 5 * 60 * 1000;
+
+// 刷新失败后的冷却时间。Finnhub 免费档只有 60 次/分钟，失败时用户往往会连点，
+// 越点越容易把额度打满，反而更取不到价
+const REFRESH_COOLDOWN_MS = 3000;
+
+const REASON_TEXT: Record<string, string> = {
+    MISSING_API_KEY: '行情凭证未配置，暂时取不到价格',
+    NO_QUOTE: '行情源查不到该代码，检查一下代码是否正确',
+    EMPTY_SYMBOL: '该条目没有登记股票代码',
+};
+
+/**
+ * 把报价接口的错误翻成「说清该怎么办」的中文。
+ *
+ * 判据是 `ApiError.status` + 服务端给的机器可读 `reason`，不是裸 `message` ——
+ * 服务端的 message 对所有取不到价的情况都是同一句「行情接口异常」，分不出是
+ * 代码写错了、凭证没配还是上游挂了。fetch 自己抛错（离线、DNS）时没有 status。
+ */
+const describeQuoteError = (error: unknown): string => {
+    if (error instanceof ApiError) {
+        const known = error.reason ? REASON_TEXT[error.reason] : undefined;
+        if (known) return known;
+        if (error.status === 429) return '行情源限流，过一会儿再试';
+        if (error.status >= 500) return '行情接口异常，请稍后重试';
+        return error.message || '刷新失败';
+    }
+    return '网络不可用，请检查连接后重试';
+};
 
 interface QuoteState {
     price: number | null;
@@ -43,13 +74,22 @@ export function HoldingCard({ holding }: { holding: any }) {
     const [expanded, setExpanded] = useState(true);
     const [quote, setQuote] = useState<QuoteState>(() => quoteFromHolding(holding));
     const [refreshing, setRefreshing] = useState(false);
+    // 刷新失败：价格照旧显示（旧价比 `--` 有用），只把它标成异常色
+    const [refreshFailed, setRefreshFailed] = useState(false);
+    const [cooling, setCooling] = useState(false);
+    const cooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const now = useSharedNow();
     const navigate = useNavigate();
 
     // loader 重新校验后，服务端数据视为权威，覆盖掉本地手动刷新的结果
     useEffect(() => {
         setQuote(quoteFromHolding(holding));
+        setRefreshFailed(false);
     }, [holding.live_price, holding.live_price_at, holding.live_price_error]);
+
+    useEffect(() => () => {
+        if (cooldownTimer.current) clearTimeout(cooldownTimer.current);
+    }, []);
 
     const hasPrice = quote.price != null;
     // 自定义条目可以没有代码：没代码就没有行情，别把它当成「报价异常」
@@ -61,14 +101,20 @@ export function HoldingCard({ holding }: { holding: any }) {
         // 卡片外层套着「点击进详情」和 SwipeAction，不拦住就会误跳页
         event.stopPropagation();
         event.preventDefault();
-        if (refreshing) return;
+        if (refreshing || cooling) return;
 
         setRefreshing(true);
         try {
             const next = await fetchQuote(holding.item_symbol, { refresh: true });
             setQuote({ price: next.price, fetchedAt: next.fetchedAt ?? Date.now(), error: null });
+            setRefreshFailed(false);
         } catch (error: any) {
-            setQuote({ price: null, fetchedAt: Date.now(), error: error?.message || '刷新失败' });
+            // 保留旧价和旧的抓取时刻：失败不该让能看的价格消失，也不该伪造新鲜度
+            setQuote((prev) => ({ ...prev, error: error?.reason || error?.message || '刷新失败' }));
+            setRefreshFailed(true);
+            Toast.show({ icon: 'fail', content: describeQuoteError(error) });
+            setCooling(true);
+            cooldownTimer.current = setTimeout(() => setCooling(false), REFRESH_COOLDOWN_MS);
         } finally {
             setRefreshing(false);
         }
@@ -83,7 +129,11 @@ export function HoldingCard({ holding }: { holding: any }) {
                     <div className={styles.livePrice}>
                         {hasPrice ? (
                             <span
-                                className={clsx(styles.livePriceValue, stale && styles.livePriceStale)}
+                                className={clsx(
+                                    styles.livePriceValue,
+                                    stale && styles.livePriceStale,
+                                    refreshFailed && styles.livePriceError,
+                                )}
                                 title={age != null ? `更新于 ${formatAge(age)}` : undefined}
                             >
                                 {formatPrice(quote.price as number)}
@@ -94,9 +144,9 @@ export function HoldingCard({ holding }: { holding: any }) {
                                 title={
                                     !hasSymbol
                                         ? '该条目没有登记股票代码，不拉行情'
-                                        : quote.error === 'NO_QUOTE'
-                                          ? '未取到该标的报价'
-                                          : quote.error || '报价异常'
+                                        : (quote.error ? REASON_TEXT[quote.error] : undefined) ||
+                                          quote.error ||
+                                          '报价异常'
                                 }
                             >
                                 --
@@ -108,7 +158,11 @@ export function HoldingCard({ holding }: { holding: any }) {
                         {hasSymbol && (
                             <button
                                 type="button"
-                                className={clsx(styles.refreshButton, refreshing && styles.refreshing)}
+                                className={clsx(
+                                    styles.refreshButton,
+                                    refreshing && styles.refreshing,
+                                    cooling && styles.cooling,
+                                )}
                                 aria-label="刷新现价"
                                 aria-busy={refreshing}
                                 // pointerdown 也要拦：SwipeAction 是在指针事件上做手势识别的

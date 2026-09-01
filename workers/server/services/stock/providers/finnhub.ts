@@ -47,7 +47,9 @@ export class FinnhubProvider implements IStockProvider {
 
 
     async getLivePrice(symbol: string): Promise<number | null> {
-        if (!this.apiKey) return null;
+        // 没配凭证要抛错而不是 return null：返回 null 会被上层归成 NO_QUOTE
+        // （「行情源查不到这个代码」），把配置问题报成数据问题，前端提示就是错的
+        if (!this.apiKey) throw new Error("MISSING_API_KEY");
 
         try {
             const response = await fetch(`${this.baseUrl}/quote?symbol=${encodeURIComponent(symbol)}&token=${this.apiKey}`);

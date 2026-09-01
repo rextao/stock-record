@@ -4,11 +4,13 @@ import { NavBar } from "antd-mobile";
 import clsx from "clsx";
 import { SellModal } from "../../features/trade-record/components/SellModal";
 import { fetchHoldingDetail, sellByItem } from "../../api/trading";
+import { formatLocalDateTime } from "../../utils/datetime";
 import styles from "./detail.module.less";
 
 // 简单的日期和价格格式化
 const formatPrice = (val: number) => val?.toFixed(2);
-const formatDateTime = (val: string) => val ? val.slice(0, 16) : '--';
+// DB 里是 UTC 墙上时间，要按设备时区折算后再展示（详见 app/utils/datetime.ts）
+const formatDateTime = (val: string) => formatLocalDateTime(val);
 
 const pnlClass = (value: number) => (value >= 0 ? styles.up : styles.down);
 

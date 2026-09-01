@@ -19,10 +19,17 @@ const calcDownsidePct = (curr: number, stop: number) => ((curr - stop) / curr) *
 export class TradingDB {
     constructor(private db: D1Database) {}
 
-    private nowLocalTime(): string {
+    /**
+     * 落库时刻，统一写 **UTC 墙上时间**（`YYYY-MM-DD HH:mm:ss`，不带时区后缀）。
+     * 以前用 `getFullYear()` 一套，名字叫 local 其实拿到的也是 UTC（Worker 运行时时区就是 UTC），
+     * 但本地 `wrangler dev` 会变成北京时间，两边不一致。显式用 getUTC* 就没有这个歧义。
+     * 无后缀是刻意的：字符串排序、区间过滤、PATCH 改日期都按字面量比较。
+     * 展示和图表分别按设备时区 / 交易所 offset 折算，见 app/utils/datetime.ts。
+     */
+    private nowUtcTime(): string {
         const d = new Date();
         const pad = (n: number) => n.toString().padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
     }
 
     private enrichTrade(trade: Trade, itemName: string): TradeWithItem {
@@ -86,7 +93,7 @@ export class TradingDB {
 
         await this.db.prepare(
             'INSERT INTO items (name, symbol, description, exchange, created_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind(item.name, symbol || null, item.description, item.exchange, this.nowLocalTime()).run();
+        ).bind(item.name, symbol || null, item.description, item.exchange, this.nowUtcTime()).run();
     }
 
     // 1.5 编辑条目。查重口径与 createItem 一致，只是要把自己排除掉；
@@ -142,7 +149,7 @@ export class TradingDB {
     }
     // ============== Trades ==============
     async createTrade(data: { item_id: number; current_price: number; target_price: number; stop_loss_price: number; buy_quantity: number; notes?: string }): Promise<number> {
-        const now = this.nowLocalTime();
+        const now = this.nowUtcTime();
         const { results } = await this.db
             .prepare(
                 `INSERT INTO trades (item_id, current_price, target_price, stop_loss_price, buy_quantity, notes, buy_time, created_at) 
@@ -154,7 +161,7 @@ export class TradingDB {
     }
 
     async recordSell(tradeId: number, actualPrice: number, sellQuantity: number): Promise<void> {
-        const now = this.nowLocalTime();
+        const now = this.nowUtcTime();
         const stmts = [
             this.db.prepare(`INSERT INTO sell_records (trade_id, sell_price, sell_quantity, sell_time) VALUES (?, ?, ?, ?)`).bind(tradeId, actualPrice, sellQuantity, now),
             this.db.prepare(`UPDATE trades SET actual_price = ?, sold_quantity = sold_quantity + ?, sell_time = ? WHERE id = ?`).bind(actualPrice, sellQuantity, now, tradeId)
@@ -221,7 +228,7 @@ export class TradingDB {
         }
 
         let remaining = qty;
-        const now = this.nowLocalTime();
+        const now = this.nowUtcTime();
 
         // 使用 any 绕过类型检查，或者如果你导出了 D1PreparedStatement 类型也可以加上
         const stmts: any[] = [];

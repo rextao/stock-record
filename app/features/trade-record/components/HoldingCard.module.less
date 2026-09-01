@@ -83,6 +83,12 @@
     color: var(--text-muted);
 }
 
+/* 手动刷新失败：旧价照旧显示（比 -- 有用），标成异常色说明「这不是最新的」。
+   写在 stale 之后，失败态优先级更高 */
+.livePriceError {
+    color: var(--status-danger);
+}
+
 .livePriceAge {
     font-size: 11px;
     color: var(--status-warn);
@@ -119,6 +125,12 @@
         svg {
             animation: holding-card-spin 0.9s linear infinite;
         }
+    }
+
+    // 失败后的冷却期：同样只挡点击，视觉上淡一档表示暂时点不动
+    &.cooling {
+        pointer-events: none;
+        opacity: 0.35;
     }
 }
 
