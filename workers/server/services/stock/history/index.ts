@@ -56,7 +56,7 @@ export function getStockHistoryService(env: any): IStockHistoryService {
         }
     };
 
-    const load = async (symbol: string, range: HistoryRange): Promise<PriceHistory> => {
+    const load = async (symbol: string, range: HistoryRange, force: boolean): Promise<PriceHistory> => {
         const interval = RANGE_INTERVALS[range] ?? "1d";
         const now = Date.now();
         const since = windowStart(range, now);
@@ -67,7 +67,9 @@ export function getStockHistoryService(env: any): IStockHistoryService {
         // 本地行缺 OHLC（是这次改动之前写进去的）时不走短路：K 线模式画不出来，
         // 得打一次上游把整段重写补齐，一次性自愈，不搞手工 migration
         const needsOhlcBackfill = stored ? stored.candles.some((candle) => typeof candle.o !== "number") : false;
-        if (stored && fresh && covered && !needsOhlcBackfill && stored.candles.length > 0) {
+        // force（手动刷新）时不认本地新鲜度：点刷新就是嫌数据旧，D1 里那份再新也得让路。
+        // 但落库仍然只补增量 —— rewriteAll 只留给 OHLC 回填，常规刷新开它会撞 D1 的写入额度
+        if (!force && stored && fresh && covered && !needsOhlcBackfill && stored.candles.length > 0) {
             return toHistory(symbol, range, stored);
         }
 
@@ -97,17 +99,25 @@ export function getStockHistoryService(env: any): IStockHistoryService {
     };
 
     return {
-        getHistory(symbol: string, range: HistoryRange): Promise<PriceHistory> {
+        async getHistory(
+            symbol: string,
+            range: HistoryRange,
+            options?: { force?: boolean },
+        ): Promise<PriceHistory> {
             const normalized = symbol.trim().toUpperCase();
+            // v2：candle 加了时间戳字段，旧缓存的形状对不上，必须换 key
+            const key = ["series", "v2", normalized, range];
+            // 手动刷新先把两级缓存删掉再走 wrap，这一趟的结果顺带回填。
+            // 不能只是「跳过读缓存」：那样缓存里的旧曲线会继续服务别的请求，刷了等于没刷
+            if (options?.force) await cache.invalidate(key);
             return cache.wrap<PriceHistory>(
-                // v2：candle 加了时间戳字段，旧缓存的形状对不上，必须换 key
-                ["series", "v2", normalized, range],
+                key,
                 {
                     ttlSeconds: config.cache.historyTtlSeconds,
                     // 空序列不缓存：可能是限流或封 IP，缓存住会让用户在整个 TTL 内都看不到曲线
                     shouldCache: (history) => history.candles.length > 0,
                 },
-                () => load(normalized, range),
+                () => load(normalized, range, options?.force === true),
             );
         },
     };

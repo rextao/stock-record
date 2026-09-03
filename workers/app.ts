@@ -235,11 +235,14 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 		const symbol = decodeSegment(second);
 		if (!symbol) return fail("缺少标的代码");
 
-		const rangeParam = new URL(request.url).searchParams.get("range") || DEFAULT_HISTORY_RANGE;
+		const historyUrl = new URL(request.url);
+		const rangeParam = historyUrl.searchParams.get("range") || DEFAULT_HISTORY_RANGE;
 		if (!isHistoryRange(rangeParam)) return fail("不支持的时间区间");
+		// refresh=1 来自走势页的刷新按钮：清两级缓存 + 跳过 D1 新鲜短路，直接打上游
+		const force = historyUrl.searchParams.get("refresh") === "1";
 
 		try {
-			const history = await getStockHistoryService(env).getHistory(symbol, rangeParam);
+			const history = await getStockHistoryService(env).getHistory(symbol, rangeParam, { force });
 			// 空序列同样按异常处理：SW 的 api-cache 只收 200，空曲线不能被缓存回放
 			if (history.candles.length === 0) {
 				return json({ symbol, range: rangeParam, candles: [], error: "未取到该标的历史数据" }, 502);

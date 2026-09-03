@@ -238,8 +238,13 @@ registerRoute(
 registerRoute(
 	// /api/quotes 是手动刷新触发的，故意不进缓存策略：NetworkFirst 的 3 秒超时会在弱网下
 	// 回放一份旧报价，而用户点刷新就是想拿最新的。离线时它直接失败，卡片显示异常标记。
+	// 带 refresh=1 的 /api/history 同理（走势页的刷新按钮）；不带的照旧走 NetworkFirst，
+	// 离线时还能看上次那条曲线。
 	({ url, request }) =>
-		request.method === 'GET' && isApi(url) && !url.pathname.startsWith('/api/quotes'),
+		request.method === 'GET' &&
+		isApi(url) &&
+		!url.pathname.startsWith('/api/quotes') &&
+		url.searchParams.get('refresh') !== '1',
 	new NetworkFirst({
 		cacheName: 'api-cache',
 		networkTimeoutSeconds: 3,

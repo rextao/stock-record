@@ -120,15 +120,19 @@ export const fetchQuote = (symbol: string, options: RequestOptions & { refresh?:
 /**
  * 拉某个标的的日收盘价序列。数据源是 Yahoo（Finnhub 免费档没有历史权限），
  * 服务端缓存 1 小时，取不到时返回 502，这里统一抛错。
+ *
+ * refresh=true 对应走势页的刷新按钮：服务端会清掉两级缓存、跳过 D1 的新鲜短路直接打
+ * 上游，SW 也不接管这条请求（否则 NetworkFirst 的 3 秒超时会回放旧曲线）。
  */
 export const fetchPriceHistory = (
 	symbol: string,
 	range: HistoryRange,
-	options: RequestOptions = {},
+	options: RequestOptions & { refresh?: boolean } = {},
 ) =>
-	request<PriceHistory>(`/api/history/${encodeURIComponent(symbol)}?range=${range}`, {
-		signal: options.signal,
-	});
+	request<PriceHistory>(
+		`/api/history/${encodeURIComponent(symbol)}?range=${range}${options.refresh ? "&refresh=1" : ""}`,
+		{ signal: options.signal },
+	);
 
 // ---------- 交易 ----------
 export const fetchTrades = (options: RequestOptions = {}) =>

@@ -18,5 +18,9 @@ export interface IStockHistoryProvider {
 
 /** 对外暴露的历史行情服务：在 provider 外面套了缓存与元信息 */
 export interface IStockHistoryService {
-    getHistory(symbol: string, range: HistoryRange): Promise<PriceHistory>;
+    /**
+     * force 是手动刷新：清掉两级缓存并跳过 D1 的新鲜短路，直接打上游。
+     * 上游失败时仍然用 D1 里的旧曲线兜底 —— 刷新失败不该把已经画出来的图变成错误页。
+     */
+    getHistory(symbol: string, range: HistoryRange, options?: { force?: boolean }): Promise<PriceHistory>;
 }

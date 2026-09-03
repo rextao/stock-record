@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { DatePicker, NavBar, SpinLoading, Toast } from 'antd-mobile'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, RefreshCw } from 'lucide-react'
 import clsx from 'clsx'
 import {
     fetchHoldingDetail,
@@ -24,6 +24,11 @@ import {
     type TradeMark,
 } from '../../features/stock-chart/types'
 import type { HoldingDetailPayload, HoldingTradeDetail } from '../../features/trade-record/types'
+import {
+    invalidateHistoryCache,
+    readHistoryCache,
+    writeHistoryCache,
+} from '../../features/stock-chart/historyCache'
 import { replaceZonedYmd, toZonedYmd } from '../../utils/datetime'
 import styles from './history.module.less'
 
@@ -56,6 +61,45 @@ function fromYmd(ymd: string): Date {
     const [y, m, d] = ymd.split('-').map(Number)
     if (!y || !m || !d) return new Date()
     return new Date(y, m - 1, d)
+}
+
+/**
+ * 改成交日期的弹窗。**必须由父组件用 `{editing && ...}` 控制、每次打开都重新挂载**，
+ * 不能常驻在树里只靠 `visible` 开关：antd-mobile 的 Picker 只在挂载时用 `value`
+ * 初始化滚轮位置（内部 `useState(value)`），而关着的时候我们的 `value` 是 undefined、
+ * DatePicker 会退回「今天」—— 之后再传对日期，滚轮也不会回去了。
+ *
+ * 挂载时先 `visible=false`、下一帧才置 true，是为了保住上滑动画：Popup 的位移弹簧
+ * 以首次渲染的可见状态为初值，一挂载就 visible=true 会直接瞬现。
+ */
+function DateEditDialog({
+    mark,
+    onClose,
+    onConfirm,
+}: {
+    mark: TradeMark
+    onClose: () => void
+    onConfirm: (value: Date) => void
+}) {
+    const [visible, setVisible] = useState(false)
+    const value = useMemo(() => fromYmd(mark.date), [mark.date])
+    // 上限固定在挂载时刻：写成 max={new Date()} 会每次渲染换一个引用，白白重算整棵列
+    const max = useMemo(() => new Date(), [])
+
+    useEffect(() => {
+        setVisible(true)
+    }, [])
+
+    return (
+        <DatePicker
+            title="修改成交日期"
+            visible={visible}
+            value={value}
+            max={max}
+            onClose={onClose}
+            onConfirm={onConfirm}
+        />
+    )
 }
 
 /**
@@ -131,8 +175,11 @@ export default function HoldingsHistoryRoute() {
     const [history, setHistory] = useState<PriceHistory | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    // 点「重试」时自增，用来重新触发同一区间的请求
-    const [reloadKey, setReloadKey] = useState(0)
+    // 重新请求的触发器。seq 每次自增用来重跑 effect；force 表示这一趟要穿透所有缓存
+    // （本地内存缓存 + 服务端两级缓存 + D1 新鲜短路），只有点刷新按钮才置 true
+    const [reload, setReload] = useState<{ seq: number; force: boolean }>({ seq: 0, force: false })
+    // 手动刷新进行中：与首屏 loading 分开，刷新时保留旧曲线、只让图标转圈
+    const [refreshing, setRefreshing] = useState(false)
     // 失败后的冷却秒数。上游限流时用户越点越被限，重试和切区间都要先按住
     const [cooldown, setCooldown] = useState(0)
     // 点中的买卖标记；明细展示在图表下方，手机上比 hover 好用
@@ -189,34 +236,83 @@ export default function HoldingsHistoryRoute() {
         // 详情还没回来时代码是空的，什么都不动：loading 保持 true，骨架继续转
         if (!symbol) return
 
+        const force = reload.force
+        // 本次 PWA 会话内看过的区间直接复用，不发请求也不闪骨架（详见 historyCache.ts）。
+        // 手动刷新要的就是最新数据，这层直接跳过
+        if (!force) {
+            const cached = readHistoryCache(symbol, range)
+            if (cached) {
+                setHistory(cached)
+                setError(null)
+                setLoading(false)
+                return
+            }
+        }
+
         // 快速切区间会有多个请求在飞，旧的必须取消，否则先发后到会覆盖新数据
         const controller = new AbortController()
-        setLoading(true)
-        setError(null)
+        // 刷新时不换骨架：图已经画出来了，整块抹掉再重画比转个圈更晃眼
+        if (force) {
+            setRefreshing(true)
+        } else {
+            setLoading(true)
+            setError(null)
+        }
 
-        fetchPriceHistory(symbol, range, { signal: controller.signal })
+        fetchPriceHistory(symbol, range, { signal: controller.signal, refresh: force })
             .then((next) => {
+                writeHistoryCache(symbol, range, next)
                 setHistory(next)
+                setError(null)
                 setLoading(false)
+                setRefreshing(false)
             })
             .catch((err: any) => {
                 if (controller.signal.aborted) return
+                // 限流要等得久一点；其余异常给个短冷却，避免连点把上游打得更死
+                setCooldown(err?.reason === 'HISTORY_RATE_LIMITED' ? 20 : 3)
+                setRefreshing(false)
+                if (force) {
+                    // 刷新失败保留原曲线，只提示一句：把已经看到的图换成错误页更难接受
+                    Toast.show({ icon: 'fail', content: err?.message || '刷新失败' })
+                    return
+                }
                 setHistory(null)
                 // Worker 已经把上游异常翻成中文文案了，直接透出
                 setError(err?.message || '加载失败')
-                // 限流要等得久一点；其余异常给个短冷却，避免连点把上游打得更死
-                setCooldown(err?.reason === 'HISTORY_RATE_LIMITED' ? 20 : 3)
                 setLoading(false)
             })
 
-        return () => controller.abort()
-    }, [symbol, range, reloadKey])
+        return () => {
+            controller.abort()
+            // 中途换区间或离开页面时别把转圈状态留在按钮上
+            setRefreshing(false)
+        }
+    }, [symbol, range, reload])
 
     const retry = useCallback(() => {
         if (cooldown > 0) return
-        setReloadKey((n) => n + 1)
+        // 重试只清本地缓存、不带 force：出错时最需要的是「拿到点什么」，
+        // 服务端边缘缓存或 D1 里的旧曲线都比继续硬打刚刚失败的上游有用
+        invalidateHistoryCache(symbol, range)
+        setReload((prev) => ({ seq: prev.seq + 1, force: false }))
         setDetailKey((n) => n + 1)
-    }, [cooldown])
+    }, [cooldown, symbol, range])
+
+    // 手动刷新：本地缓存 10 分钟、服务端边缘缓存 1 小时，正常态下没有别的入口能拿到最新一根，
+    // 所以这里带 refresh=1 让整条链路都让路，直接打上游
+    const refresh = useCallback(() => {
+        if (!symbol || loading || refreshing || cooldown > 0) return
+        invalidateHistoryCache(symbol, range)
+        setReload((prev) => ({ seq: prev.seq + 1, force: true }))
+        setDetailKey((n) => n + 1)
+    }, [symbol, range, loading, refreshing, cooldown])
+
+    // 换区间时要把上一次刷新的 force 摘掉，否则之后每换一次区间都白打一次上游
+    const selectRange = useCallback((next: HistoryRange) => {
+        setReload((prev) => (prev.force ? { seq: prev.seq + 1, force: false } : prev))
+        setRange(next)
+    }, [])
 
     // 只改日期，时分秒沿用原值：DB 里排序和「最近一次卖出」都依赖完整时刻。
     // 换日期要在**交易所时区**里换（图上的 mark.date 就是交易所当地日），
@@ -273,6 +369,22 @@ export default function HoldingsHistoryRoute() {
                             {diffPct.toFixed(2)}%）
                         </span>
                     )}
+                    {/* 没登记代码时本来就拉不到行情，按钮也不用出现 */}
+                    {symbol && (
+                        <button
+                            type="button"
+                            className={clsx(
+                                styles.refreshButton,
+                                refreshing && styles.refreshing,
+                                (loading || cooldown > 0) && styles.cooling,
+                            )}
+                            aria-label="刷新行情"
+                            aria-busy={refreshing}
+                            onClick={refresh}
+                        >
+                            <RefreshCw size={14} />
+                        </button>
+                    )}
                 </div>
 
                 <div className={styles.rangeBar}>
@@ -282,7 +394,7 @@ export default function HoldingsHistoryRoute() {
                             type="button"
                             className={clsx(styles.rangeButton, item === range && styles.rangeButtonActive)}
                             disabled={cooldown > 0 && item !== range}
-                            onClick={() => setRange(item)}
+                            onClick={() => selectRange(item)}
                         >
                             {RANGE_LABELS[item]}
                         </button>
@@ -384,15 +496,14 @@ export default function HoldingsHistoryRoute() {
                 )}
             </div>
 
-            {/* 成交日期纠错：只到天，时分秒沿用原值 */}
-            <DatePicker
-                title="修改成交日期"
-                visible={editing != null}
-                value={editing ? fromYmd(editing.date) : undefined}
-                max={new Date()}
-                onClose={() => setEditing(null)}
-                onConfirm={confirmDate}
-            />
+            {/* 成交日期纠错：只到天，时分秒沿用原值。每次打开都重新挂载，见 DateEditDialog 注释 */}
+            {editing && (
+                <DateEditDialog
+                    mark={editing}
+                    onClose={() => setEditing(null)}
+                    onConfirm={confirmDate}
+                />
+            )}
         </div>
     )
 }

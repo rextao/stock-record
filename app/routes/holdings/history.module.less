@@ -48,6 +48,49 @@
     font-weight: 500;
 }
 
+/* 现价旁的手动刷新。写法照 HoldingCard 的同名按钮：只有图标、无边框透明底 */
+.refreshButton {
+    /* 顶到行尾；父级是 baseline 对齐，图标得自己居中，否则会被基线拽下去半个字高 */
+    margin-left: auto;
+    align-self: center;
+    /* 触摸目标要够大，视觉上只有图标，用负 margin 把右侧内边距吃回去 */
+    padding: @gap-xs;
+    margin-right: -@gap-xs;
+    border: none;
+    background: transparent;
+    color: var(--accent-purple);
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+        opacity: 0.6;
+    }
+
+    &.refreshing {
+        /* 刷新中挡重复点击靠 pointer-events 而不是 disabled：disabled 会连着改掉配色 */
+        pointer-events: none;
+        color: var(--status-warn);
+
+        svg {
+            animation: history-refresh-spin 0.9s linear infinite;
+        }
+    }
+
+    /* 首屏加载中、以及失败后的冷却期：同样只挡点击，视觉上淡一档 */
+    &.cooling {
+        pointer-events: none;
+        opacity: 0.35;
+    }
+}
+
+@keyframes history-refresh-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .up {
     color: var(--pnl-up);
 }
