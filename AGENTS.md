@@ -72,7 +72,7 @@ px 会被 `postcss-px-to-viewport-8-plugin` 转 vw；不想被转的元素（Tab
 
 `workers/app.ts` 里手写路由，不用框架。所有 `/api` 响应带 `Cache-Control: no-store`，业务异常统一 400 + `{error}`。缺行情凭证时搜索接口返回 503/502（**必须是非 2xx**，否则会被 SW 的 api-cache 当正常结果缓存并回放）。
 
-行情数据源可插拔：实现 `IStockProvider` → 在 `services/stock/providers/index.ts` 注册表挂一行 → 用 `STOCK_PROVIDER` 环境变量切换。缓存在 `services/stock/cached.ts` 统一套一层，provider 自己不写缓存。缓存实现是 `server/cache/index.ts` 的 `createCache(namespace)`，L1 内存 Map + L2 `caches.default`，**只有 L2 跨 isolate 有效**（Workers 随时回收 isolate，光靠内存 Map 命中率不可控）。任何服务都能复用它。
+行情数据源可插拔：实现 `IStockProvider` → 在 `services/stock/providers/index.ts` 注册表挂一行 → 用 `STOCK_PROVIDER` 环境变量切换。默认报价链路是 Finnhub 主源、Twelve Data 兜底：只有 Finnhub 抛错、返回空值或无效数字才请求 Twelve Data，搜索仍只走 Finnhub，避免消耗备用源每分钟 8 次的免费额度。缓存在 `services/stock/cached.ts` 统一套一层，provider 自己不写缓存。缓存实现是 `server/cache/index.ts` 的 `createCache(namespace)`，L1 内存 Map + L2 `caches.default`，**只有 L2 跨 isolate 有效**（Workers 随时回收 isolate，光靠内存 Map 命中率不可控）。任何服务都能复用它。
 
 TTL：`QUOTE_CACHE_TTL` 默认 600s，`SEARCH_CACHE_TTL` 默认 86400s，`HISTORY_CACHE_TTL` 默认 3600s。
 
@@ -106,7 +106,7 @@ SW 注册脚本内联在 `<head>`（`app/common/pwa/swBootstrap.ts`），不能�
 
 ## 环境变量与部署
 
-本地放 `.dev.vars`（已 gitignore）。线上 `FINNHUB_API_KEY` 必须在 Cloudflare Dashboard 建成 **Secret 类型**——`wrangler.json` 的 `vars` 会覆盖同名 Secret。验证：`curl -s https://域名/api/health`，看 `hasQuoteKey` / `stockProvider` / `db` / `tables` / `counts`。
+本地放 `.dev.vars`（已 gitignore）。线上 `FINNHUB_API_KEY`、`TWELVE_DATA_API_KEY` 必须在 Cloudflare Dashboard 建成 **Secret 类型**——`wrangler.json` 的 `vars` 会覆盖同名 Secret。验证：`curl -s https://域名/api/health`，看 `hasQuoteKey` / `hasQuoteFallbackKey` / `stockProvider` / `db` / `tables` / `counts`。
 
 D1 库名 `stock-storage`，`database_id` 是 `31f66cce-ebe7-473b-9da0-343f81a9aec5`。初始化本地库：`npx wrangler d1 execute stock-storage --local --file workers/server/db/schema.sql`。**不要动远端库**，改了 `schema.sql` 只提醒用户自己跑一次 `--remote`（表没建时行情持久化会自己降级，不会报错）。
 
@@ -116,7 +116,6 @@ D1 库名 `stock-storage`，`database_id` 是 `31f66cce-ebe7-473b-9da0-343f81a9a
 
 - `package.json` 的 `typecheck` 脚本要修（`typegen` → `cf-typegen`）。
 - `wrangler.json` 里模板残留的 `VALUE_FROM_CLOUDFLARE` 可删（牵动 `worker-configuration.d.ts`，删后重跑 `wrangler types`）。
-- `README.md` 里明文写了 Finnhub API key，应删除并轮换该 key。
 - `tokens.less` 的浅色令牌需真机微调（只改 `:root` 块）。
 
 ## 协作方式

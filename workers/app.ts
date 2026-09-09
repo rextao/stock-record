@@ -9,6 +9,7 @@ export interface AppEnv extends Env {
 	// 静态资源绑定，SPA 回退时用它取 index.html
 	ASSETS: { fetch: (input: Request | URL | string) => Promise<Response> };
 	FINNHUB_API_KEY?: string;
+	TWELVE_DATA_API_KEY?: string;
 	QUOTE_CACHE_TTL?: string;
 	SEARCH_CACHE_TTL?: string;
 	HISTORY_CACHE_TTL?: string;
@@ -272,6 +273,7 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 // 线上自检：只回布尔与长度，不回密钥本身。用于确认「secret 是否落到当前这个 Worker」
 async function handleHealth(env: AppEnv): Promise<Response> {
 	const key = env.FINNHUB_API_KEY || "";
+	const fallbackKey = env.TWELVE_DATA_API_KEY || "";
 	let dbOk = false;
 	let dbError: string | undefined;
 	let tables: string[] = [];
@@ -313,6 +315,7 @@ async function handleHealth(env: AppEnv): Promise<Response> {
 	return json({
 		ok: dbOk && key.length > 0,
 		hasQuoteKey: key.length > 0,
+		hasQuoteFallbackKey: fallbackKey.length > 0,
 		quoteKeyLength: key.length,
 		quoteCacheTtl: env.QUOTE_CACHE_TTL ?? null,
 		searchCacheTtl: env.SEARCH_CACHE_TTL ?? null,

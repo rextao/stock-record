@@ -3,6 +3,7 @@ export interface AppConfig {
     stockProvider: string;
     providers: {
         finnhub: { apiKey: string };
+        twelveData: { apiKey: string };
     };
     cache: {
         quoteTtlSeconds: number; // 实时报价缓存时长
@@ -16,6 +17,7 @@ export function getConfig(env: any): AppConfig {
         stockProvider: (env.STOCK_PROVIDER || '').trim() || 'finnhub',
         providers: {
             finnhub: { apiKey: env.FINNHUB_API_KEY || '' },
+            twelveData: { apiKey: env.TWELVE_DATA_API_KEY || '' },
         },
         cache: {
             // 默认缓存 600 秒 (10 分钟)
