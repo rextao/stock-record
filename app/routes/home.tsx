@@ -6,6 +6,7 @@ import { HoldingCard } from "../features/trade-record/components/HoldingCard";
 import { SellModal } from "../features/trade-record/components/SellModal";
 import { EmptyState } from "../common/components/EmptyState";
 import { FloatingActionButton } from "../common/components/FloatingActionButton";
+import { ConnectionStatusIndicator } from "../common/network/ConnectionStatusBanner";
 import { fetchHoldings, sellByItem } from "../api/trading";
 import styles from "./home.module.less";
 
@@ -71,7 +72,10 @@ export default function HomeRoute() {
 	return (
 		<div className={styles.page}>
 			<div className={styles.header}>
-				<div className={styles.pageTitle}>首页</div>
+				<div className={styles.titleGroup}>
+					<div className={styles.pageTitle}>首页</div>
+					<ConnectionStatusIndicator />
+				</div>
 				{/* 涨跌幅计算用得频繁，从标题栏直达，省掉「我的 → 工具」两跳 */}
 				<button
 					type="button"

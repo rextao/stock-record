@@ -232,6 +232,22 @@ registerRoute(
 // 接口写操作（POST / DELETE）故意不注册路由：workbox 的 router 默认只接管 GET，
 // 它们会走浏览器默认的网络请求，绝不会被缓存策略吞掉。
 
+// 连通性探测必须始终直连 Worker。若它落进下面的 NetworkFirst，断网时可能回放之前的
+// 200 响应，让页面把“缓存可用”误判成“网络正常”。
+registerRoute(
+	({ url, request }) => request.method === 'GET' && url.pathname === '/api/ping',
+	({ request }) => fetch(request),
+);
+
+// NetworkFirst 回放缓存时，页面本身看不到 fetch 失败。通知所有窗口做一次受频率限制的
+// ping，及时区分“接口旧数据可用”和“Worker 确实可达”。
+const apiNetworkFailurePlugin = {
+	async fetchDidFail() {
+		const clients = await self.clients.matchAll({ type: 'window' });
+		for (const client of clients) client.postMessage({ type: 'API_NETWORK_FAILURE' });
+	},
+};
+
 // 接口数据：优先网络，成功后写缓存；断网时 fetch 会立刻 reject 并回放上一次的数据，
 // 页面不会白屏。这里刻意不用 StaleWhileRevalidate —— 持仓和报价属于要求准确的数据，
 // 在线时不应该先渲染一份过期结果。首屏速度由上面的外壳预缓存负责。
@@ -243,12 +259,14 @@ registerRoute(
 	({ url, request }) =>
 		request.method === 'GET' &&
 		isApi(url) &&
+		url.pathname !== '/api/ping' &&
 		!url.pathname.startsWith('/api/quotes') &&
 		url.searchParams.get('refresh') !== '1',
 	new NetworkFirst({
 		cacheName: 'api-cache',
 		networkTimeoutSeconds: 3,
 		plugins: [
+			apiNetworkFailurePlugin,
 			new CacheableResponsePlugin({ statuses: [200] }),
 			new ExpirationPlugin({ maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 }),
 		],

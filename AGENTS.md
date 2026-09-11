@@ -32,7 +32,7 @@ app/
   routes.ts                 路由表；BasicLayout 内的页面有 TabBar，外面的没有
   routes/                   页面，每个页面一个同名 .module.less
   features/                 业务模块（trade-record、stock-chart），组件与类型
-  common/                   layouts / components / hooks / theme(themeStore) / pwa(swBootstrap)
+  common/                   layouts / components / hooks / theme / pwa / network（全局连通性状态）
   api/trading.ts            前端请求封装
   styles/                   tokens.less（CSS 变量·主题令牌）、variables.less（Less 变量·自动注入）、global.less
   utils/                    calculations.ts 纯计算；datetime.ts 时间时区折算（UTC 存 / 本地展示 / 交易所对齐）
@@ -92,7 +92,7 @@ antd-mobile 的 `PullToRefresh` 有两个必须一起处理的坑。一，它把
 
 离线外壳是 `/` 而不是 `/index.html`（Cloudflare 的 `html_handling` 会把 `/index.html` 301 到 `/`，而 `Cache.put` 拒绝重定向响应）。导航请求降级链：精确匹配 `/` → 忽略 query → `/index.html` → 网络 → `shellMissPage()`（自带诊断表格的兜底页，绝不把异常抛给浏览器，否则会被 Chrome 原生错误页掩盖）。
 
-路由顺序敏感：`/__sw/status`（JSON 自检）→ 导航（denylist `/^\/api\//`）→ 预缓存产物 CacheFirst → `/api` GET NetworkFirst（3s 超时，**`/api/quotes` 除外，手动刷新不能被 3s 超时回放旧报价**）→ 兜底同源静态 CacheFirst。**`/api` 刻意不用 StaleWhileRevalidate。**
+路由顺序敏感：`/__sw/status`（JSON 自检）→ 导航（denylist `/^\/api\//`）→ 预缓存产物 CacheFirst → `/api/ping` 直连 → `/api` GET NetworkFirst（3s 超时，**`/api/quotes` 除外，手动刷新不能被 3s 超时回放旧报价**）→ 兜底同源静态 CacheFirst。**`/api` 刻意不用 StaleWhileRevalidate。** 全局网络提示不能只信 `navigator.onLine`：正常时每 5 分钟 ping，异常时每分钟重试，API 网络失败触发的额外探测至少间隔 30 秒；ping 必须绕过 SW 缓存，否则旧 200 会造成在线假象。
 
 SW 注册脚本内联在 `<head>`（`app/common/pwa/swBootstrap.ts`），不能放进 React effect —— SPA 下首屏 clientLoader 卡住就永远注册不上。
 

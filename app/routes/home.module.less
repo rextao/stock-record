@@ -50,7 +50,15 @@
     padding: @gap-lg @gap-xl;
 }
 
+.titleGroup {
+    display: flex;
+    align-items: center;
+    gap: @gap-sm;
+    min-width: 0;
+}
+
 .pageTitle {
+    flex-shrink: 0;
     font-size: 24px;
     font-weight: 600;
     color: var(--text-primary);

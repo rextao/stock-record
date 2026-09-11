@@ -30,6 +30,8 @@ export const NUMERIC_KEYPAD_ID = 'numeric-keypad'
 
 type Props = {
     visible: boolean
+    /** 嵌在 Popup 等容器内时参与正常布局，不使用全屏固定定位 */
+    embedded?: boolean
     /** 当前字段是否允许小数点（股数这类整数字段要把这个键禁掉） */
     allowDecimal: boolean
     canPrev: boolean
@@ -45,6 +47,7 @@ type Props = {
 
 export default function NumericKeypad({
     visible,
+    embedded = false,
     allowDecimal,
     canPrev,
     canNext,
@@ -63,7 +66,12 @@ export default function NumericKeypad({
     }
 
     return (
-        <div id={NUMERIC_KEYPAD_ID} className={styles.keypad} role="group" aria-label="数字键盘">
+        <div
+            id={NUMERIC_KEYPAD_ID}
+            className={clsx(styles.keypad, embedded && styles.embedded)}
+            role="group"
+            aria-label="数字键盘"
+        >
             {children ? <div className={styles.info}>{children}</div> : null}
 
             <div className={styles.nav}>

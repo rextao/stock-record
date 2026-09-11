@@ -332,6 +332,10 @@ export default {
 		const url = new URL(request.url);
 
 		if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
+			// 只证明浏览器能直连当前 Worker，不读 D1、不请求任何行情上游。
+			if (url.pathname === "/api/ping" && request.method === "GET") {
+				return json({ ok: true });
+			}
 			if (url.pathname === "/api/health") return handleHealth(env);
 			try {
 				return await handleApi(request, env, url.pathname);

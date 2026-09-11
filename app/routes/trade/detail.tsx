@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useLoaderData, useNavigate, useFetcher } from "react-router";
-import { NavBar, Input, Button, Dialog, Toast } from "antd-mobile";
+import { NavBar, Button, Dialog, Toast } from "antd-mobile";
 import clsx from "clsx";
 import { deleteTrade, fetchTradeDetail, sellTrade } from "../../api/trading";
+import { SellModal } from "../../features/trade-record/components/SellModal";
 import styles from "./detail.module.less";
 
 const formatPrice = (val: number) => val?.toFixed(2);
@@ -55,24 +56,10 @@ export default function TradeDetailRoute() {
     const fetcher = useFetcher();
 
     const [showSellForm, setShowSellForm] = useState(false);
-    const [sellPrice, setSellPrice] = useState("");
-    const [sellQty, setSellQty] = useState(String(trade.remaining));
 
     const isPartial = trade.sold_quantity > 0 && !trade.is_fully_closed;
 
-    const handleRecordSell = () => {
-        const price = parseFloat(sellPrice);
-        const qty = parseFloat(sellQty);
-
-        if (!price || price <= 0) {
-            Toast.show("请输入有效的实际价格");
-            return;
-        }
-        if (!qty || qty <= 0 || qty > trade.remaining) {
-            Toast.show("卖出数量无效或超过剩余持仓");
-            return;
-        }
-
+    const handleRecordSell = (price: number, qty: number) => {
         fetcher.submit(
             { intent: "sell", tradeId: trade.id.toString(), price: String(price), qty: String(qty) },
             { method: "post" }
@@ -140,46 +127,26 @@ export default function TradeDetailRoute() {
                     )}
                 </div>
 
-                {/* 卖出表单 / 按钮 */}
-                {!trade.is_fully_closed && !showSellForm && (
+                {!trade.is_fully_closed && (
                     <Button block onClick={() => setShowSellForm(true)} className={styles.sellButton}>
                         记录卖出
                     </Button>
-                )}
-
-                {showSellForm && (
-                    <div className={clsx(styles.card, styles.sellForm)}>
-                        <div className={styles.fieldLabel}>卖出数量（剩余 {trade.remaining}）</div>
-                        <div className={styles.inputWrap}>
-                            <Input type="number" value={sellQty} onChange={setSellQty} className={styles.input} />
-                        </div>
-
-                        <div className={styles.fieldLabel}>实际卖出价格</div>
-                        <div className={styles.inputWrap}>
-                            <Input
-                                type="number"
-                                value={sellPrice}
-                                onChange={setSellPrice}
-                                placeholder="0.00"
-                                className={styles.input}
-                            />
-                        </div>
-
-                        <div className={styles.actions}>
-                            <Button block onClick={() => setShowSellForm(false)} className={styles.cancelButton}>
-                                取消
-                            </Button>
-                            <Button block onClick={handleRecordSell} className={styles.confirmButton}>
-                                确认卖出
-                            </Button>
-                        </div>
-                    </div>
                 )}
 
                 <div onClick={handleDelete} className={styles.deleteAction}>
                     删除记录
                 </div>
             </div>
+            <SellModal
+                visible={showSellForm}
+                holding={{
+                    item_name: trade.item_name,
+                    remaining_qty: trade.remaining,
+                    weighted_avg_price: trade.current_price,
+                }}
+                onClose={() => setShowSellForm(false)}
+                onConfirm={handleRecordSell}
+            />
         </div>
     );
 }

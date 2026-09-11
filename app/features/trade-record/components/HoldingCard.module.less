@@ -40,24 +40,6 @@
     color: var(--text-secondary);
 }
 
-/* 历史走势入口：放在底部栏左侧，带文字标签，比孤零零一个图标好认 */
-.historyButton {
-    padding: @gap-xs @gap-sm @gap-xs 0;
-    border: none;
-    background: transparent;
-    color: var(--accent-purple);
-    font-size: 13px;
-    display: inline-flex;
-    align-items: center;
-    gap: @gap-xs;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-
-    &:active {
-        opacity: 0.6;
-    }
-}
-
 .livePrice {
     font-size: 14px;
     font-weight: 500;
@@ -99,11 +81,18 @@
     flex-shrink: 0;
 }
 
-.refreshButton {
-    // 触摸目标要够大，但视觉上只有图标，所以用负 margin 把内边距吃回去
-    padding: @gap-xs;
+.quoteActions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
     margin: -@gap-xs;
     margin-left: 0;
+}
+
+.quoteActionButton {
+    // 刷新在上、走势在下；触摸目标靠内边距撑开，视觉上仍只显示图标
+    padding: @gap-xs;
     border: none;
     background: transparent;
     color: var(--accent-purple);
@@ -140,52 +129,10 @@
     }
 }
 
-.summary {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: @gap-md;
-}
-
-.summaryCell {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-
-    &.alignCenter {
-        align-items: center;
-    }
-
-    &.alignEnd {
-        align-items: flex-end;
-    }
-}
-
-.summaryLabel {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-bottom: @gap-xs;
-}
-
-.summaryValue {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-
-    &.weightNormal {
-        font-weight: 500;
-    }
-
-    // 从未卖出过时的占位，弱化处理，避免和真实价格抢视线
-    &.summaryEmpty {
-        font-weight: 500;
-        color: var(--text-secondary);
-    }
-}
-
 .toggleRow {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-top: @gap-xs;
 }
 
@@ -272,9 +219,21 @@
     align-items: flex-end;
 }
 
+.pnlPrimary {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 3px;
+    white-space: nowrap;
+}
+
 .pnlAmount {
     font-size: 14px;
     font-weight: 600;
+}
+
+.pnlPct {
+    font-size: 10px;
+    font-weight: 500;
 }
 
 .pnlPerShare {

@@ -120,6 +120,17 @@ export function HoldingCard({ holding }: { holding: any }) {
         }
     };
 
+    const handleHistory = (event: MouseEvent<HTMLButtonElement>) => {
+        // 与刷新按钮同理：外层的「点击进详情」和 SwipeAction 手势都要拦住
+        event.stopPropagation();
+        event.preventDefault();
+        // 名称和代码随导航带过去，走势页首屏就能出 NavBar 标题和曲线，
+        // 不用等持仓详情回来（那会让点击看起来像卡住）
+        navigate(`/holdings/${holding.item_id}/history`, {
+            state: { name: holding.item_name, symbol: holding.item_symbol },
+        });
+    };
+
     return (
         <div className={styles.card}>
             <div className={styles.header}>
@@ -156,21 +167,32 @@ export function HoldingCard({ holding }: { holding: any }) {
                             <AlertTriangle size={13} className={styles.livePriceAlert} aria-hidden />
                         )}
                         {hasSymbol && (
-                            <button
-                                type="button"
-                                className={clsx(
-                                    styles.refreshButton,
-                                    refreshing && styles.refreshing,
-                                    cooling && styles.cooling,
-                                )}
-                                aria-label="刷新现价"
-                                aria-busy={refreshing}
-                                // pointerdown 也要拦：SwipeAction 是在指针事件上做手势识别的
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onClick={handleRefresh}
-                            >
-                                <RefreshCw size={14} />
-                            </button>
+                            <div className={styles.quoteActions}>
+                                <button
+                                    type="button"
+                                    className={clsx(
+                                        styles.quoteActionButton,
+                                        refreshing && styles.refreshing,
+                                        cooling && styles.cooling,
+                                    )}
+                                    aria-label="刷新现价"
+                                    aria-busy={refreshing}
+                                    // pointerdown 也要拦：SwipeAction 是在指针事件上做手势识别的
+                                    onPointerDown={(event) => event.stopPropagation()}
+                                    onClick={handleRefresh}
+                                >
+                                    <RefreshCw size={14} />
+                                </button>
+                                <button
+                                    type="button"
+                                    className={styles.quoteActionButton}
+                                    aria-label="查看走势"
+                                    onPointerDown={(event) => event.stopPropagation()}
+                                    onClick={handleHistory}
+                                >
+                                    <ChartLine size={14} />
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -183,58 +205,10 @@ export function HoldingCard({ holding }: { holding: any }) {
                 </div>
             </div>
 
-            <div className={styles.summary}>
-                <div className={styles.summaryCell}>
-                    <span className={styles.summaryLabel}>最近平仓价</span>
-                    {holding.last_sell_price != null ? (
-                        <span className={clsx(styles.summaryValue, styles.weightNormal)}>
-                            {formatPrice(holding.last_sell_price)}
-                        </span>
-                    ) : (
-                        <span className={clsx(styles.summaryValue, styles.summaryEmpty)}>--</span>
-                    )}
-                </div>
-                <div className={clsx(styles.summaryCell, styles.alignCenter)}>
-                    <span className={styles.summaryLabel}>加权均价</span>
-                    <span className={clsx(styles.summaryValue, styles.weightNormal)}>
-                        {formatPrice(holding.weighted_avg_price)}
-                    </span>
-                </div>
-                <div className={clsx(styles.summaryCell, styles.alignEnd)}>
-                    <span className={styles.summaryLabel}>累计平仓盈亏</span>
-                    <span className={clsx(styles.summaryValue, pnlClass(holding.realized_pnl))}>
-                        {holding.realized_pnl >= 0 ? '+' : ''}
-                        {holding.realized_pnl.toFixed(2)}
-                    </span>
-                </div>
-            </div>
+            {/* 汇总区域暂时隐藏，数据和接口字段保留，方便后续恢复。 */}
 
-            {/* 底部栏：左边走势入口，右边展开/收起箭头，正好用掉这行本来空着的地方 */}
-            <div className={styles.toggleRow}>
-                {/* 没登记代码的条目拉不到历史行情，入口直接不给，点进去只会是错误页 */}
-                {hasSymbol ? (
-                    <button
-                        type="button"
-                        className={styles.historyButton}
-                        // 与刷新按钮同理：外层的「点击进详情」和 SwipeAction 手势都要拦住
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            event.preventDefault();
-                            // 名称和代码随导航带过去，走势页首屏就能出 NavBar 标题和曲线，
-                            // 不用等持仓详情回来（那会让点击看起来像卡住）
-                            navigate(`/holdings/${holding.item_id}/history`, {
-                                state: { name: holding.item_name, symbol: holding.item_symbol },
-                            });
-                        }}
-                    >
-                        <ChartLine size={14} />
-                        走势
-                    </button>
-                ) : (
-                    <span />
-                )}
-                {holding.sub_trades.length > 0 && (
+            {holding.sub_trades.length > 0 && (
+                <div className={styles.toggleRow}>
                     <div
                         className={styles.toggleButton}
                         onClick={(e) => {
@@ -244,8 +218,8 @@ export function HoldingCard({ holding }: { holding: any }) {
                     >
                         {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {expanded && holding.sub_trades.length > 0 && (
                 <div className={styles.subTradeList}>
@@ -255,10 +229,14 @@ export function HoldingCard({ holding }: { holding: any }) {
                         const downside =
                             st.current_price > 0 ? ((st.current_price - st.stop_loss_price) / st.current_price) * 100 : 0;
 
-                        const hasLive = holding.live_price != null;
-                        const livePnlAmount = hasLive ? (holding.live_price - st.current_price) * st.remaining : 0;
+                        const hasLive = quote.price != null;
+                        const livePnlAmount = hasLive ? ((quote.price as number) - st.current_price) * st.remaining : 0;
                         // 单仓/单股价差
-                        const livePnlPerShare = hasLive ? holding.live_price - st.current_price : 0;
+                        const livePnlPerShare = hasLive ? (quote.price as number) - st.current_price : 0;
+                        const livePnlPct =
+                            hasLive && st.current_price > 0
+                                ? (((quote.price as number) - st.current_price) / st.current_price) * 100
+                                : 0;
 
                         return (
                             <div key={st.id} className={styles.subTrade}>
@@ -299,9 +277,15 @@ export function HoldingCard({ holding }: { holding: any }) {
                                         <span className={styles.metricLabel}>当前盈亏</span>
                                         {hasLive ? (
                                             <>
-                                                <span className={clsx(styles.pnlAmount, pnlClass(livePnlAmount))}>
-                                                    {livePnlAmount >= 0 ? '+' : ''}
-                                                    {livePnlAmount.toFixed(0)}
+                                                <span className={clsx(styles.pnlPrimary, pnlClass(livePnlAmount))}>
+                                                    <span className={styles.pnlAmount}>
+                                                        {livePnlAmount >= 0 ? '+' : ''}
+                                                        {livePnlAmount.toFixed(0)}
+                                                    </span>
+                                                    <span className={styles.pnlPct}>
+                                                        ({livePnlPct >= 0 ? '+' : ''}
+                                                        {livePnlPct.toFixed(2)}%)
+                                                    </span>
                                                 </span>
                                                 <span className={styles.pnlPerShare}>
                                                     单仓 {livePnlPerShare >= 0 ? '+' : ''}

@@ -20,6 +20,7 @@ import {
 } from "./common/theme/themeStore";
 import { SW_BOOTSTRAP_SCRIPT } from "./common/pwa/swBootstrap";
 import { VIEWPORT_BOOTSTRAP_SCRIPT } from "./common/viewport/viewportBootstrap";
+import { ConnectionStatusMonitor } from "./common/network/ConnectionStatusBanner";
 import styles from "./root.module.less";
 
 export const meta: MetaFunction = () => [
@@ -127,7 +128,12 @@ export default function App() {
 		}
 	}, [resolvedTheme]);
 
-	return <Outlet />;
+	return (
+		<>
+			<ConnectionStatusMonitor />
+			<Outlet />
+		</>
+	);
 }
 
 // SPA 模式下首屏由浏览器加载数据，加载完成前渲染这个占位，避免白屏闪烁

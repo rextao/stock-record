@@ -8,6 +8,7 @@ import type {
 	TradeWithItem,
 } from "../features/trade-record/types";
 import type { HistoryRange, PriceHistory } from "../features/stock-chart/types";
+import { reportRequestNetworkFailure } from "../common/network/connectionStore";
 
 export interface StockSearchResult {
 	symbol: string;
@@ -36,11 +37,18 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-	const response = await fetch(path, {
-		credentials: "same-origin",
-		...init,
-		headers: { Accept: "application/json", ...(init.headers || {}) },
-	});
+	let response: Response;
+	try {
+		response = await fetch(path, {
+			credentials: "same-origin",
+			...init,
+			headers: { Accept: "application/json", ...(init.headers || {}) },
+		});
+	} catch (error) {
+		// 路由切换主动 abort 不代表断网；只有真正的 fetch 失败才触发连通性探测。
+		if (!init.signal?.aborted) reportRequestNetworkFailure();
+		throw error;
+	}
 
 	const payload = await response.json().catch(() => null);
 	if (!response.ok) {
