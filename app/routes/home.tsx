@@ -10,6 +10,13 @@ import { ConnectionStatusIndicator } from "../common/network/ConnectionStatusBan
 import { fetchHoldings, sellByItem } from "../api/trading";
 import styles from "./home.module.less";
 
+// 走势页组件放在 features/ 里、由本文件静态依赖：RR 会把 routes/ 下的路由模块
+// 虚拟化成懒加载 chunk、无法被静态 import，所以组件得移出 routes 才能真正进入首页 chunk。
+// 这样点「查看走势」时 Router 的 lazy import 直接命中已加载模块、瞬时完成导航；
+// 行情/详情请求仍在跳过去之后由页面自己发，loading 显示在走势页里。
+// 代价是首页首屏多加载这部分 JS；走势入口只在首页卡片上，这个交换划算。
+import "../features/stock-chart/pages/HistoryPage";
+
 /**
  * 下拉刷新的头部高度与触发阈值必须显式写死，不能用 antd-mobile 的默认值。
  *

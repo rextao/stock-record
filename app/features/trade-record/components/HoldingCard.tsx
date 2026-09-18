@@ -4,6 +4,9 @@ import { AlertTriangle, ChartLine, ChevronDown, ChevronUp, RefreshCw } from 'luc
 import clsx from 'clsx';
 import { Toast } from 'antd-mobile';
 import { ApiError, fetchQuote } from '../../../api/trading';
+
+// 走势页路径常量从走势页模块导入，也是把走势页代码拉进首页 chunk 的真实引用（见该模块注释）
+import { historyPath } from '../../stock-chart/pages/HistoryPage';
 import { useSharedNow } from '../../../common/hooks/useSharedNow';
 import { formatLocalShort } from '../../../utils/datetime';
 import styles from './HoldingCard.module.less';
@@ -126,7 +129,7 @@ export function HoldingCard({ holding }: { holding: any }) {
         event.preventDefault();
         // 名称和代码随导航带过去，走势页首屏就能出 NavBar 标题和曲线，
         // 不用等持仓详情回来（那会让点击看起来像卡住）
-        navigate(`/holdings/${holding.item_id}/history`, {
+        navigate(historyPath(holding.item_id), {
             state: { name: holding.item_name, symbol: holding.item_symbol },
         });
     };

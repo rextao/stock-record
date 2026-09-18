@@ -31,7 +31,7 @@ app/
   root.tsx                  HTML 外壳、主题引导脚本、SW 注册脚本（生产环境内联在 <head>）
   routes.ts                 路由表；BasicLayout 内的页面有 TabBar，外面的没有
   routes/                   页面，每个页面一个同名 .module.less
-  features/                 业务模块（trade-record、stock-chart），组件与类型
+  features/                 业务模块（trade-record、stock-chart）：组件、类型，走势页组件在 stock-chart/pages
   common/                   layouts / components / hooks / theme / pwa / network（全局连通性状态）
   api/trading.ts            前端请求封装
   styles/                   tokens.less（CSS 变量·主题令牌）、variables.less（Less 变量·自动注入）、global.less
@@ -62,7 +62,7 @@ px 会被 `postcss-px-to-viewport-8-plugin` 转 vw；不想被转的元素（Tab
 
 图标用 `lucide-react`。
 
-走势图（`app/features/stock-chart/components/PriceHistoryChart.tsx`）**刻意手绘 Canvas，不引图表库**：需求是自定义标注 —— 同方向成交按像素间距合并成 `B3`、圆点钉在真实成交价上、最近卖价的水平虚线、最后一笔卖出旁挂收益金额。lightweight-charts 的 marker 只能贴在 K 线上方/下方，**钉不到任意价格**（买入价通常不等于当日收盘价，点会飘），为拿它的手势要把标注自由度换掉。看日期靠点击标记出竖向辅助线 + 下方明细，不做 hover。**将来真要双指平移缩放再重新评估换库**，那部分自己写不划算。同一块 Canvas 兼画折线和 K 线（`PriceHistoryChart` 的 `mode` prop；页面上只是 state，不持久化）：K 线只在点数 ≤ `MAX_CANDLE_BARS`(90) 且每根都带 o/h/l 时才画，否则**开关照旧可点、组件内部静默退回折线**，提示语由页面给 —— 手机宽度下 200 多根实体不足 1px，糊成色块不如折线；蜡烛涨红跌绿都画实心，空心描边在 1~2px 宽的实体上只剩边框。 走势页 `app/routes/holdings/history.tsx` **刻意不写 `clientLoader`**：RR7 在 loader 结算前不渲染新页面、全仓又没有 pending 指示，点「走势」看起来像卡住；标的名/代码由首页卡片 `navigate(..., { state })` 带过来，详情在页内异步拉，`symbol` 还空着时行情 effect 直接 return（骨架继续转，不要在这里报错）。默认区间是 `DEFAULT_HISTORY_RANGE = '5d'`，Worker 的 fallback 引同一个常量。
+走势图（`app/features/stock-chart/components/PriceHistoryChart.tsx`）**刻意手绘 Canvas，不引图表库**：需求是自定义标注 —— 同方向成交按像素间距合并成 `B3`、圆点钉在真实成交价上、最近卖价的水平虚线、最后一笔卖出旁挂收益金额。lightweight-charts 的 marker 只能贴在 K 线上方/下方，**钉不到任意价格**（买入价通常不等于当日收盘价，点会飘），为拿它的手势要把标注自由度换掉。看日期靠点击标记出竖向辅助线 + 下方明细，不做 hover。**将来真要双指平移缩放再重新评估换库**，那部分自己写不划算。同一块 Canvas 兼画折线和 K 线（`PriceHistoryChart` 的 `mode` prop；页面上只是 state，不持久化）：K 线只在点数 ≤ `MAX_CANDLE_BARS`(90) 且每根都带 o/h/l 时才画，否则**开关照旧可点、组件内部静默退回折线**，提示语由页面给 —— 手机宽度下 200 多根实体不足 1px，糊成色块不如折线；蜡烛涨红跌绿都画实心，空心描边在 1~2px 宽的实体上只剩边框。 走势页组件在 `app/features/stock-chart/pages/HistoryPage.tsx`（路由文件 `routes/holdings/history.tsx` 只做转发）：组件刻意放在 routes 目录**外面**并由首页真实引用 `historyPath` —— RR 把 routes/ 下的模块虚拟化成懒加载 chunk，跨模块的静态 import 会被吞掉；组件留在 routes 里时点「走势」要先下载解析它的 chunk（约 38K）和一串依赖，表现就是「先卡一会才跳」。移出 routes 后代码进入首页加载链，点击瞬时跳过去、loading 仍在页内。**引用必须是真实使用**（`historyPath` 被导航调用）：纯副作用 import 会被 rollup 当作无副作用的未用导入整段移除，依赖链照样断（package.json 声明 sideEffects 实测无效）。代价是首页首屏多加载约 15K（gzip）。 走势页 **刻意不写 `clientLoader`**：RR7 在 loader 结算前不渲染新页面、全仓又没有 pending 指示，点「走势」看起来像卡住；标的名/代码由首页卡片 `navigate(..., { state })` 带过来，详情在页内异步拉，`symbol` 还空着时行情 effect 直接 return（骨架继续转，不要在这里报错）。默认区间是 `DEFAULT_HISTORY_RANGE = '5d'`，Worker 的 fallback 引同一个常量。
 
 移动端**纯数字字段一律用自绘键盘 `app/common/components/NumericKeypad.tsx`，不要用原生输入框**（参考 `app/routes/trade/new.tsx`）：iOS 上 input 一拿到焦点，WebKit 就会挂一条无法隐藏的表单辅助条，Chrome/Android 又没有，且软键盘弹收会改写 visualViewport 必然抖动。做法是单元格用 `<button>` 显示值 + 自绘光标，`onPointerDown` 里 `preventDefault` 阻止取得焦点。键盘尺寸走 `variables.less` 的 `@keypad-*`，让位的页面用 `@keypad-body-height` 算底部内边距。
 
@@ -124,7 +124,11 @@ D1 库名 `stock-storage`，`database_id` 是 `31f66cce-ebe7-473b-9da0-343f81a9a
 
 这个确认环节要**短**：用户要的是「大致改哪儿」，不是技术细节。方案讲清取舍即可，实现细节留到代码里。
 
-改完跑 `npx tsc -b --force` + `npm run build`；浏览器和真机验证由用户自己做，**不要装 Playwright、不要起 CDP、不要写测试**。仓库常处于脏工作区，用户自己提交，**不要 `git reset`/`checkout --` 撤销别人的改动**。
+改完跑 `npx tsc -b --force` + `npm run build`；浏览器和真机验证由用户自己做，**不要装 Playwright、不要起 CDP、不要写测试**。
+
+**提交约定：每个阶段改完且 `npx tsc -b --force` + `npm run build` 都通过后，Codex 直接提交到本地仓库**（一个阶段一个提交），**严禁 `git push` 到远端**，远端同步由用户自己来。**不要 `git reset`/`checkout --` 撤销别人的改动**。
+
+任务收尾时，如果本次有代码改动，最终回复末尾附一段可直接复制的 commit message（代码块包裹）：标题延续项目风格 codex <type>: <一句话>（type 按改动性质取 feat 新功能 / fix 修复 / perf 性能 / refactor 重构 / style 样式 / docs 文档 / chore 杂项），正文不超过 3 条要点、写清「改了什么、为什么」，中文。纯问答、查代码、无改动时不生成。
 
 ## 本文件的维护规则
 
