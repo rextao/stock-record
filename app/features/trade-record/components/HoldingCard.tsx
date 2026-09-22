@@ -19,6 +19,15 @@ const formatShortTime = (timeStr: string) => formatLocalShort(timeStr);
 // 涨跌统一走同一个判断，避免各处重复写三元
 const pnlClass = (value: number) => (value >= 0 ? styles.up : styles.down);
 
+// 现价跌破止损时给整卡加底色，跌得越深越暗。阈值：≤3% 轻档，≤7% 中档，>7% 重档。
+// 口径是「跌破最狠的一笔」（同一张卡多笔 sub_trade 各有各的止损，取最大跌破比例）。
+const alertClassForBreach = (breachPct: number): string | undefined => {
+    if (breachPct <= 0) return undefined;
+    if (breachPct <= 3) return styles.cardAlert1;
+    if (breachPct <= 7) return styles.cardAlert2;
+    return styles.cardAlert3;
+};
+
 // 超过这个时长就把现价标黄，提示「该刷一下了」。
 // 判断依据是服务端的抓取时刻，不是行情自带的时间戳 —— 休市时价格本来不动，
 // 用行情时间戳会让所有标的一直是黄色，等于没有提示。
@@ -100,6 +109,16 @@ export function HoldingCard({ holding }: { holding: any }) {
     const age = quote.fetchedAt != null ? now - quote.fetchedAt : null;
     const stale = hasPrice && age != null && age > STALE_AFTER_MS;
 
+    // 跌破止损的最大幅度：只看还有剩余仓位、且止损价有效的 sub_trade
+    const worstBreachPct = hasPrice
+        ? (holding.sub_trades as any[]).reduce((worst, st) => {
+              if (st.remaining <= 0 || st.stop_loss_price <= 0) return worst;
+              const breach = ((st.stop_loss_price - (quote.price as number)) / st.stop_loss_price) * 100;
+              return breach > worst ? breach : worst;
+          }, 0)
+        : 0;
+    const alertClass = alertClassForBreach(worstBreachPct);
+
     const handleRefresh = async (event: MouseEvent<HTMLButtonElement>) => {
         // 卡片外层套着「点击进详情」和 SwipeAction，不拦住就会误跳页
         event.stopPropagation();
@@ -135,7 +154,7 @@ export function HoldingCard({ holding }: { holding: any }) {
     };
 
     return (
-        <div className={styles.card}>
+        <div className={clsx(styles.card, alertClass)}>
             <div className={styles.header}>
                 {/* 第一行只放标的名和现价：挤进笔数、时效等信息会让标的名被压没 */}
                 <div className={styles.headerMain}>

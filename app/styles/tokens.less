@@ -61,6 +61,12 @@
     --status-success: #087a45;
     --status-success-surface: #ecfdf3;
 
+    /* 跌破止损的整卡告警底色：按跌破幅度分三档（越深越暗）。
+       刻意用 danger 红而不复用涨跌色，避免和「涨=红」的价格语义打架 */
+    --card-alert-1: #fcedee;
+    --card-alert-2: #fadede;
+    --card-alert-3: #f7cbcb;
+
     /* 表单 */
     --input-bg: #ffffff;
     --input-border: #e5e7eb;
@@ -125,6 +131,10 @@ html[data-prefers-color-scheme='dark'] {
     --status-danger: #f87171;
     --status-success: #4ade80;
     --status-success-surface: #0b2114;
+
+    --card-alert-1: #281419;
+    --card-alert-2: #411b1f;
+    --card-alert-3: #5e2427;
 
     --input-bg: rgba(255, 255, 255, 0.04);
     --input-border: rgba(255, 255, 255, 0.08);

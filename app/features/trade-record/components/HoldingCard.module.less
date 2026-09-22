@@ -3,6 +3,20 @@
     background-color: var(--card-bg);
 }
 
+/* 跌破止损的整卡告警底色。复合选择器抬权重，压过上面的 .card 基线背景
+   （单类同权重时靠源码顺序，复合选择器更稳，不受 antd/路由 CSS 插入顺序影响） */
+.card.cardAlert1 {
+    background-color: var(--card-alert-1);
+}
+
+.card.cardAlert2 {
+    background-color: var(--card-alert-2);
+}
+
+.card.cardAlert3 {
+    background-color: var(--card-alert-3);
+}
+
 .header {
     display: flex;
     flex-direction: column;
