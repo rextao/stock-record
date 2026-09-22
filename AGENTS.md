@@ -128,7 +128,7 @@ D1 库名 `stock-storage`，`database_id` 是 `31f66cce-ebe7-473b-9da0-343f81a9a
 
 改完跑 `npx tsc -b --force` + `npm run build`；浏览器和真机验证由用户自己做，**不要装 Playwright、不要起 CDP、不要写测试**。
 
-**提交约定：每个阶段改完且 `npx tsc -b --force` + `npm run build` 都通过后，Codex 直接提交到本地仓库**（一个阶段一个提交），**严禁 `git push` 到远端**，远端同步由用户自己来。**不要 `git reset`/`checkout --` 撤销别人的改动**。
+**提交约定：每个阶段改完且 `npx tsc -b --force` + `npm run build` 都通过后，Codex 自己跑 `git add` + `git commit` 提交到本地仓库**（一个阶段一个提交，暂存和提交都由 Codex 做，不用用户手动 add），**严禁 `git push` 到远端**，远端同步由用户自己来。暂存优先只 add 本次真正改到的文件，别 `git add .` 卷进无关改动。**不要 `git reset`/`checkout --` 撤销别人的改动**。
 
 任务收尾时，如果本次有代码改动，最终回复末尾附一段可直接复制的 commit message（代码块包裹）：标题延续项目风格 codex <type>: <一句话>（type 按改动性质取 feat 新功能 / fix 修复 / perf 性能 / refactor 重构 / style 样式 / docs 文档 / chore 杂项），正文不超过 3 条要点、写清「改了什么、为什么」，中文。纯问答、查代码、无改动时不生成。
 
