@@ -71,7 +71,10 @@ export default function ChartRoute() {
         let totalPnl = 0;
         let winningTradesCount = 0;
         let losingTradesCount = 0;
-        const rankingMap = new Map<number, { id: number; name: string; profit: number }>();
+        const rankingMap = new Map<
+            number,
+            { id: number; name: string; profit: number; lastSellPrice: number; lastSellTime: string }
+        >();
         const daily = new Map<string, number>();
 
         // 遍历所有卖出记录，只统计在所选时间范围内的真实平仓收益
@@ -93,8 +96,19 @@ export default function ChartRoute() {
                 const prev = rankingMap.get(t.item_id);
                 if (prev) {
                     prev.profit += profit;
+                    // sell_time 是可字面量排序的 UTC 墙上时间，直接比大小取最新一笔
+                    if (rec.sell_time > prev.lastSellTime) {
+                        prev.lastSellTime = rec.sell_time;
+                        prev.lastSellPrice = rec.sell_price;
+                    }
                 } else {
-                    rankingMap.set(t.item_id, { id: t.item_id, name: t.item_name, profit });
+                    rankingMap.set(t.item_id, {
+                        id: t.item_id,
+                        name: t.item_name,
+                        profit,
+                        lastSellPrice: rec.sell_price,
+                        lastSellTime: rec.sell_time,
+                    });
                 }
             }
 
@@ -182,6 +196,28 @@ export default function ChartRoute() {
             ) : (
                 <div className={styles.body}>
 
+                    {/* 盈亏排行榜：按需求置顶 */}
+                    <div className={styles.rankCard}>
+                        <div className={styles.rankTitle}>盈亏排行</div>
+                        {stats.ranking.length === 0 ? (
+                            <div className={styles.rankEmpty}>该时间范围内暂无卖出记录</div>
+                        ) : (
+                            stats.ranking.map((row) => (
+                                <div key={row.id} className={styles.rankRow}>
+                                    <span className={styles.rankName}>{row.name}</span>
+                                    <div className={styles.rankRight}>
+                                        <span className={styles.rankLastSell}>
+                                            最近卖出 {row.lastSellPrice.toFixed(2)}
+                                        </span>
+                                        <span className={clsx(styles.rankValue, pnlClass(row.profit))}>
+                                            {row.profit >= 0 ? '+' : ''}{row.profit.toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
                     {/* 4宫格核心数据 */}
                     <div className={styles.statGrid}>
                         <StatBlock label="总交易" value={`${stats.totalTrades}笔`} />
@@ -201,23 +237,6 @@ export default function ChartRoute() {
                     {/* 趋势折线图 */}
                     <div className={styles.chartCard}>
                         <PnlTrendChart points={stats.trend} />
-                    </div>
-
-                    {/* 盈亏排行榜 */}
-                    <div className={styles.rankCard}>
-                        <div className={styles.rankTitle}>盈亏排行</div>
-                        {stats.ranking.length === 0 ? (
-                            <div className={styles.rankEmpty}>该时间范围内暂无卖出记录</div>
-                        ) : (
-                            stats.ranking.map((row) => (
-                                <div key={row.id} className={styles.rankRow}>
-                                    <span className={styles.rankName}>{row.name}</span>
-                                    <span className={clsx(styles.rankValue, pnlClass(row.profit))}>
-                                        {row.profit >= 0 ? '+' : ''}{row.profit.toFixed(2)}
-                                    </span>
-                                </div>
-                            ))
-                        )}
                     </div>
                 </div>
             )}
