@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLoaderData, useNavigate, useSubmit, redirect } from "react-router";
 import { NavBar, Button, Toast } from "antd-mobile";
 import clsx from "clsx";
-import { createTrade, fetchItems } from "../../api/trading";
+import { createTrade, fetchItems, fetchTrades } from "../../api/trading";
 import NumericKeypad, { NUMERIC_KEYPAD_ID } from "../../common/components/NumericKeypad";
 import PlainTextArea from "../../common/components/PlainTextArea";
 import { sanitizeDecimalInput, sanitizeIntegerInput } from "../../utils/numberInput";
@@ -12,8 +12,22 @@ import styles from "./new.module.less";
 // 1. 客户端数据逻辑
 // ==========================================
 export async function clientLoader({ request }: { request: Request }) {
-    // 加载用户已经创建的所有标的（items）供选择
-    return fetchItems({ signal: request.signal });
+    // 并行拉「标的列表」和「交易记录」：后者用来算每个标的的最近卖出价
+    const [itemsRes, tradesRes] = await Promise.all([
+        fetchItems({ signal: request.signal }),
+        fetchTrades({ signal: request.signal }),
+    ]);
+    const lastSell: Record<number, { price: number; time: string }> = {};
+    for (const t of tradesRes.trades) {
+        for (const rec of t.sell_records || []) {
+            const prev = lastSell[t.item_id];
+            // sell_time 是可字面量排序的 UTC 墙上时间，直接比大小取最新一笔
+            if (!prev || rec.sell_time > prev.time) {
+                lastSell[t.item_id] = { price: rec.sell_price, time: rec.sell_time };
+            }
+        }
+    }
+    return { items: itemsRes.items, lastSell };
 }
 
 export async function clientAction({ request }: { request: Request }) {
@@ -59,7 +73,7 @@ type Tone = 'default' | 'up' | 'down';
 const toneClass = (tone: Tone) => (tone === 'up' ? styles.up : tone === 'down' ? styles.down : undefined);
 
 export default function NewTradeRoute() {
-    const { items } = useLoaderData<typeof clientLoader>();
+    const { items, lastSell } = useLoaderData<typeof clientLoader>();
     const navigate = useNavigate();
     const submit = useSubmit();
 
@@ -170,6 +184,13 @@ export default function NewTradeRoute() {
     const current = parseFloat(currentPrice) || 0;
     const target = parseFloat(targetPrice) || 0;
     const stopLoss = parseFloat(stopLossPrice) || 0;
+
+    // 选中标的的最近卖出价，以及与「当前价」的距离百分比（当前价未填时不算）
+    const lastSellEntry = selectedItemId != null ? lastSell[selectedItemId] : undefined;
+    const lastSellPrice = lastSellEntry?.price ?? null;
+    const lastSellGap = (lastSellPrice !== null && current > 0)
+        ? ((current - lastSellPrice) / lastSellPrice) * 100
+        : null;
 
     const upside = (current > 0 && target > 0) ? ((target - current) / current) * 100 : null;
     const downside = (current > 0 && stopLoss > 0) ? ((current - stopLoss) / current) * 100 : null;
@@ -300,6 +321,19 @@ export default function NewTradeRoute() {
                         );
                     })}
                 </div>
+
+                {/* 最近卖出价：帮买入决策做个参照，有卖出记录才显示 */}
+                {lastSellPrice !== null && (
+                    <div className={styles.lastSellRow}>
+                        <span className={styles.lastSellLabel}>最近卖出价</span>
+                        <span className={styles.lastSellPrice}>{lastSellPrice.toFixed(2)}</span>
+                        {lastSellGap !== null && (
+                            <span className={clsx(styles.lastSellGap, toneClass(lastSellGap >= 0 ? 'up' : 'down'))}>
+                                {formatPct(lastSellGap)}
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 {/* 3. 实时计算收益分析面板 */}
                 {hasMetrics && (

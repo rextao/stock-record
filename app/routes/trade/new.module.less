@@ -179,6 +179,35 @@
     margin-top: @gap-lg;
 }
 
+/* 最近卖出价参照行：一行摆「标签 / 卖价 / 与当前价距离%」 */
+.lastSellRow {
+    display: flex;
+    align-items: center;
+    gap: @gap-sm;
+    margin-top: @gap-md;
+    padding: @gap-md @gap-lg;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-lg;
+    font-size: 14px;
+}
+
+.lastSellLabel {
+    color: var(--text-muted);
+}
+
+.lastSellPrice {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.lastSellGap {
+    margin-left: auto;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
 .calcItem {
     display: flex;
     flex-direction: column;
