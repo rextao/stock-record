@@ -84,6 +84,8 @@ export function SellModal({
     const costPrice = holding.weighted_avg_price || 0;
     const inputPrice = parseFloat(sellPrice) || 0;
     const inputQty = parseInt(sellQty, 10) || 0;
+    // 现价快填：holding 已带 live_price（首页卡片同款字段），没有就不显示按钮
+    const livePrice = typeof holding.live_price === 'number' ? holding.live_price : null;
 
     const isValidInput = inputPrice > 0 && inputQty > 0;
 
@@ -128,7 +130,18 @@ export function SellModal({
                     {activeIndex === 0 && <span className={styles.caret} aria-hidden="true" />}
                 </button>
 
-                <div className={styles.label}>实际卖出价格</div>
+                <div className={styles.priceLabelRow}>
+                    <span className={styles.label}>实际卖出价格</span>
+                    {livePrice != null && (
+                        <button
+                            type="button"
+                            className={styles.fillPriceButton}
+                            onClick={() => setSellPrice(livePrice.toFixed(2))}
+                        >
+                            现价 {livePrice.toFixed(2)}
+                        </button>
+                    )}
+                </div>
                 <button
                     type="button"
                     className={clsx(styles.inputCell, activeIndex === 1 && styles.inputCellActive)}

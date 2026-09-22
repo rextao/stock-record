@@ -45,6 +45,32 @@
     margin-bottom: @gap-md;
 }
 
+/* 价格标签行：左标签、右「现价」快填按钮 */
+.priceLabelRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: @gap-md;
+
+    .label {
+        margin-bottom: 0;
+    }
+}
+
+.fillPriceButton {
+    padding: 4px @gap-md;
+    background-color: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: @radius-pill;
+    color: var(--accent);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+
+    &:active {
+        background-color: var(--accent-soft-strong);
+    }
+}
+
 .fractionRow {
     display: flex;
     gap: @gap-sm;
