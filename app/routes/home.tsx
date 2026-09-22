@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useLoaderData, useNavigate, useFetcher, useRevalidator } from "react-router";
-import { PullToRefresh, SwipeAction } from "antd-mobile";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import { PullToRefresh, SwipeAction, SpinLoading, Toast } from "antd-mobile";
 import { ChartNoAxesColumn, Percent } from "lucide-react";
 import { HoldingCard } from "../features/trade-record/components/HoldingCard";
 import { SellModal } from "../features/trade-record/components/SellModal";
@@ -25,55 +25,56 @@ import "../features/stock-chart/pages/HistoryPage";
  * head 中，是首页渲染时才随 <Links/> 插入的，所以首屏第一次 render 量出来是 0。
  * headHeight 为 0 时橡皮筋公式 rubberbandIfOutOfBounds(y, 0, 0, headHeight * 5, 0.5) 恒返回 0，
  * status 永远停在 pulling，松手只回弹、不触发 onRefresh —— 表现就是「下拉完全没反应」。
- * 又因为首页数据走 clientLoader、渲染后没有 state 变化，整个生命周期只 render 一次，
- * 那个 0 会被一直留住；进二级页再回来重新 mount 时 CSS 已生效，所以才「返回后就好了」。
+ * 历史上首页数据走 clientLoader、渲染后无 state 变化，整个生命周期只 render 一次，
+ * 那个 0 会被永久留住（进二级页再回来重新 mount 时 CSS 已生效才「返回后就好了」）。
+ * 现在改成页内 useEffect 拉数据、会多次 render，但 headHeight 写死成常量后与 render
+ * 时机无关，任何时候都取得到，别再改回 antd 默认值。
  */
 const PULL_HEAD_HEIGHT = 40;
 const PULL_THRESHOLD = 60;
 
 // ==========================================
-// 客户端数据加载（纯 CSR，全部走 /api）
-// ==========================================
-export async function clientLoader({ request }: { request: Request }) {
-	return fetchHoldings({ signal: request.signal });
-}
-
-export async function clientAction({ request }: { request: Request }) {
-	const formData = await request.formData();
-	if (formData.get("intent") !== "sell") return null;
-
-	try {
-		await sellByItem({
-			itemId: Number(formData.get("itemId")),
-			price: Number(formData.get("price")),
-			qty: Number(formData.get("qty")),
-		});
-		return { success: true };
-	} catch (error: any) {
-		return { error: error.message as string };
-	}
-}
-
-// ==========================================
 // 客户端组件
 // ==========================================
 export default function HomeRoute() {
-	const loaderData = useLoaderData<typeof clientLoader>();
-	const holdings = loaderData?.holdings || [];
-
 	const navigate = useNavigate();
-	const fetcher = useFetcher();
-	const revalidator = useRevalidator();
+	const [holdings, setHoldings] = useState<any[]>([]);
+	const [loading, setLoading] = useState(true);
 	const [sellHolding, setSellHolding] = useState<any>(null);
 
-	/**
-	 * 下拉刷新：重新走一遍 clientLoader，**不带 force**。
-	 * 服务端的报价缓存只缓存成功结果（失败的不写缓存），所以正常标的直接命中缓存、
-	 * 上次取数失败的标的会自然重试 —— 这正是「缓存期内用缓存，只重拉异常数据」的效果，
-	 * 不需要额外的强制刷新参数。要强刷单个标的走卡片上的刷新按钮。
+	/*
+	 * 首页刻意不写 clientLoader，改成页内 useEffect 拉数据。
+	 * RR7 的 clientLoader 会阻塞路由渲染，SPA 首屏在 loader 结算前只显示 HydrateFallback，
+	 * PWA 从桌面冷启动时这段「加载中」会一直持续到 /api/holdings 返回 —— 每次进都白等一两秒。
+	 * 改成先渲染骨架、再异步拉数据：冷启动瞬时进首页，loading 转圈收在列表区内。
 	 */
-	const handleRefresh = async () => {
-		await revalidator.revalidate();
+	useEffect(() => {
+		const controller = new AbortController();
+		fetchHoldings({ signal: controller.signal })
+			.then((res) => setHoldings(res.holdings || []))
+			.catch((error: any) => {
+				if (controller.signal.aborted) return;
+				Toast.show(error?.message || "加载失败");
+			})
+			.finally(() => {
+				if (controller.signal.aborted) return;
+				setLoading(false);
+			});
+		return () => controller.abort();
+	}, []);
+
+	/*
+	 * 下拉刷新 / 卖出后重新拉一次 /api/holdings，**不带 force**。
+	 * 服务端只缓存成功的报价（失败不写缓存），所以正常标的直接命中缓存、上次失败的自然重试，
+	 * 正是「缓存期内用缓存、只重拉异常数据」的效果。强刷单个标的走卡片上的刷新按钮。
+	 */
+	const reloadHoldings = async () => {
+		try {
+			const res = await fetchHoldings();
+			setHoldings(res.holdings || []);
+		} catch (error: any) {
+			Toast.show(error?.message || "刷新失败");
+		}
 	};
 
 	return (
@@ -97,12 +98,17 @@ export default function HomeRoute() {
 
 			<div className={styles.scrollArea}>
 				<PullToRefresh
-					onRefresh={handleRefresh}
+					onRefresh={reloadHoldings}
 					headHeight={PULL_HEAD_HEIGHT}
 					threshold={PULL_THRESHOLD}
 				>
 					<div className={styles.list}>
-						{holdings.length === 0 ? (
+						{loading ? (
+							<div className={styles.loading}>
+								<SpinLoading color="currentColor" />
+								加载中
+							</div>
+						) : holdings.length === 0 ? (
 							<EmptyState
 								icon={ChartNoAxesColumn}
 								title="暂无持仓"
@@ -137,12 +143,16 @@ export default function HomeRoute() {
 				visible={!!sellHolding}
 				holding={sellHolding}
 				onClose={() => setSellHolding(null)}
-				onConfirm={(price, qty) => {
-					fetcher.submit(
-						{ intent: 'sell', itemId: sellHolding.item_id, price: String(price), qty: String(qty) },
-						{ method: 'post' }
-					);
+				onConfirm={async (price, qty) => {
+					const target = sellHolding;
 					setSellHolding(null);
+					if (!target) return;
+					try {
+						await sellByItem({ itemId: target.item_id, price, qty });
+						await reloadHoldings();
+					} catch (error: any) {
+						Toast.show(error?.message || '卖出失败');
+					}
 				}}
 			/>
 		</div>
