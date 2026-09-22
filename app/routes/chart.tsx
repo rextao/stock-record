@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useLoaderData } from 'react-router'
-import { Popup, Calendar } from 'antd-mobile'
+import { useEffect, useMemo, useState } from 'react'
+import { Popup, Calendar, SpinLoading, Toast } from 'antd-mobile'
 import { ChartNoAxesColumn } from 'lucide-react'
 import clsx from 'clsx'
 import PnlTrendChart from '../features/stock-chart/components/PnlTrendChart'
@@ -33,25 +32,33 @@ const formatDateStr = (d: Date) => {
 };
 
 // ==========================================
-// 客户端数据加载：一次性拉取所有交易及卖出记录
-// ==========================================
-export async function clientLoader({ request }: { request: Request }) {
-    // /api/trades 会将对应的 sell_records 也带出来
-    return fetchTrades({ signal: request.signal });
-}
-
-// ==========================================
 // 客户端组件
 // ==========================================
 export default function ChartRoute() {
-    const loaderData = useLoaderData<typeof clientLoader>();
-    const trades = loaderData?.trades || [];
+    const [trades, setTrades] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const [rangeKey, setRangeKey] = useState<ChartRangeKey>('all');
     const [customStart, setCustomStart] = useState(CHART_ALL_START);
     const [customEnd, setCustomEnd] = useState(todayDate());
     const [calendarVisible, setCalendarVisible] = useState(false);
     const [customApplied, setCustomApplied] = useState(false);
+
+    // 页内异步加载：去掉阻塞 loader，点「图表」瞬时进入、内容区转圈
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchTrades({ signal: controller.signal })
+            .then((res) => setTrades(res.trades || []))
+            .catch((error: any) => {
+                if (controller.signal.aborted) return;
+                Toast.show(error?.message || '加载失败');
+            })
+            .finally(() => {
+                if (controller.signal.aborted) return;
+                setLoading(false);
+            });
+        return () => controller.abort();
+    }, []);
 
     // 计算当前选中的日期边界
     const bounds = useMemo(
@@ -187,7 +194,12 @@ export default function ChartRoute() {
                 })}
             </div>
 
-            {stats.totalTrades === 0 ? (
+            {loading ? (
+                <div className={styles.loading}>
+                    <SpinLoading color="currentColor" />
+                    加载中
+                </div>
+            ) : stats.totalTrades === 0 ? (
                 <EmptyState
                     icon={ChartNoAxesColumn}
                     title="该时间范围内暂无已平仓记录"
