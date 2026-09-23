@@ -61,7 +61,11 @@ export class TradingDB {
                 `SELECT i.*,
                         (SELECT COUNT(*) FROM trades t WHERE t.item_id = i.id) AS trade_count,
                         (SELECT COUNT(*) FROM sell_records s
-                          WHERE s.trade_id IN (SELECT id FROM trades WHERE item_id = i.id)) AS sell_count
+                          WHERE s.trade_id IN (SELECT id FROM trades WHERE item_id = i.id)) AS sell_count,
+                        (SELECT sr.sell_price FROM sell_records sr JOIN trades t2 ON sr.trade_id = t2.id
+                          WHERE t2.item_id = i.id ORDER BY sr.sell_time DESC, sr.id DESC LIMIT 1) AS last_sell_price,
+                        (SELECT sr.sell_time  FROM sell_records sr JOIN trades t2 ON sr.trade_id = t2.id
+                          WHERE t2.item_id = i.id ORDER BY sr.sell_time DESC, sr.id DESC LIMIT 1) AS last_sell_time
                  FROM items i
                  ORDER BY i.created_at DESC`,
             )

@@ -16,6 +16,9 @@ export interface Item {
 export interface ItemWithUsage extends Item {
 	trade_count: number;
 	sell_count: number;
+	/** 该标的最近一次卖出价/时间；服务端按标的取最新一笔卖出（sell_time DESC）派生，从未卖过为 null。买入页用作参照 */
+	last_sell_price: number | null;
+	last_sell_time: string | null;
 }
 
 export interface Trade {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLoaderData, useNavigate, useSubmit, redirect } from "react-router";
 import { NavBar, Button, Toast } from "antd-mobile";
 import clsx from "clsx";
-import { createTrade, fetchItems, fetchTrades } from "../../api/trading";
+import { createTrade, fetchItems } from "../../api/trading";
 import NumericKeypad, { NUMERIC_KEYPAD_ID } from "../../common/components/NumericKeypad";
 import PlainTextArea from "../../common/components/PlainTextArea";
 import { sanitizeDecimalInput, sanitizeIntegerInput } from "../../utils/numberInput";
@@ -12,22 +12,9 @@ import styles from "./new.module.less";
 // 1. 客户端数据逻辑
 // ==========================================
 export async function clientLoader({ request }: { request: Request }) {
-    // 并行拉「标的列表」和「交易记录」：后者用来算每个标的的最近卖出价
-    const [itemsRes, tradesRes] = await Promise.all([
-        fetchItems({ signal: request.signal }),
-        fetchTrades({ signal: request.signal }),
-    ]);
-    const lastSell: Record<number, { price: number; time: string }> = {};
-    for (const t of tradesRes.trades) {
-        for (const rec of t.sell_records || []) {
-            const prev = lastSell[t.item_id];
-            // sell_time 是可字面量排序的 UTC 墙上时间，直接比大小取最新一笔
-            if (!prev || rec.sell_time > prev.time) {
-                lastSell[t.item_id] = { price: rec.sell_price, time: rec.sell_time };
-            }
-        }
-    }
-    return { items: itemsRes.items, lastSell };
+    // 只拉「标的列表」：每个标的的最近卖出价已由服务端在 /api/items 里派生好（last_sell_*）
+    const itemsRes = await fetchItems({ signal: request.signal });
+    return { items: itemsRes.items };
 }
 
 export async function clientAction({ request }: { request: Request }) {
@@ -73,7 +60,7 @@ type Tone = 'default' | 'up' | 'down';
 const toneClass = (tone: Tone) => (tone === 'up' ? styles.up : tone === 'down' ? styles.down : undefined);
 
 export default function NewTradeRoute() {
-    const { items, lastSell } = useLoaderData<typeof clientLoader>();
+    const { items } = useLoaderData<typeof clientLoader>();
     const navigate = useNavigate();
     const submit = useSubmit();
 
@@ -186,8 +173,8 @@ export default function NewTradeRoute() {
     const stopLoss = parseFloat(stopLossPrice) || 0;
 
     // 选中标的的最近卖出价，以及与「当前价」的距离百分比（当前价未填时不算）
-    const lastSellEntry = selectedItemId != null ? lastSell[selectedItemId] : undefined;
-    const lastSellPrice = lastSellEntry?.price ?? null;
+    const selectedItem = selectedItemId != null ? items.find((it) => it.id === selectedItemId) : undefined;
+    const lastSellPrice = selectedItem?.last_sell_price ?? null;
     const lastSellGap = (lastSellPrice !== null && current > 0)
         ? ((current - lastSellPrice) / lastSellPrice) * 100
         : null;
