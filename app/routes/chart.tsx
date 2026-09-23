@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import PnlTrendChart from '../features/stock-chart/components/PnlTrendChart'
 import { EmptyState } from '../common/components/EmptyState'
 import { fetchTrades } from '../api/trading'
+import { readTradesCache, writeTradesCache } from '../features/trade-record/sessionCache'
 import styles from './chart.module.less'
 
 // 直接使用纯前端复用的计算库
@@ -35,8 +36,10 @@ const formatDateStr = (d: Date) => {
 // 客户端组件
 // ==========================================
 export default function ChartRoute() {
-    const [trades, setTrades] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    // 首屏先用上次缓存的交易列表垫（切 Tab 秒开），下面的 effect 再后台重拉纠正。
+    // loading 只在没有缓存时才转圈。
+    const [trades, setTrades] = useState<any[]>(() => readTradesCache() ?? []);
+    const [loading, setLoading] = useState(() => readTradesCache() === null);
 
     const [rangeKey, setRangeKey] = useState<ChartRangeKey>('all');
     const [customStart, setCustomStart] = useState(CHART_ALL_START);
@@ -44,14 +47,20 @@ export default function ChartRoute() {
     const [calendarVisible, setCalendarVisible] = useState(false);
     const [customApplied, setCustomApplied] = useState(false);
 
-    // 页内异步加载：去掉阻塞 loader，点「图表」瞬时进入、内容区转圈
+    // 页内异步加载：去掉阻塞 loader，点「图表」瞬时进入、内容区转圈。
+    // 有缓存时首屏已拿缓存渲染，这次拉取只是后台重新校验，失败别打扰用户（旧数据还在）。
     useEffect(() => {
         const controller = new AbortController();
+        const hadCache = readTradesCache() != null;
         fetchTrades({ signal: controller.signal })
-            .then((res) => setTrades(res.trades || []))
+            .then((res) => {
+                const list = res.trades || [];
+                setTrades(list);
+                writeTradesCache(list);
+            })
             .catch((error: any) => {
                 if (controller.signal.aborted) return;
-                Toast.show(error?.message || '加载失败');
+                if (!hadCache) Toast.show(error?.message || '加载失败');
             })
             .finally(() => {
                 if (controller.signal.aborted) return;

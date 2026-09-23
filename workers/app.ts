@@ -104,23 +104,16 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 	if (resource === "holdings") {
 		if (!second && method === "GET") {
 			const rawHoldings = await db.getOpenHoldings();
-			const stockService = getStockProvider(env);
-			// 报价按标的并发拉取，取的是标的代码（item_symbol）而不是展示名；缓存在 withStockCache 里
-			const holdings = await Promise.all(
-				rawHoldings.map(async (holding) => {
-					// getQuote 内部已经吞掉异常，额外的 catch 只防御意料外的抛出
-					const quote = await stockService
-						.getQuote(holding.item_symbol)
-						.catch(() => ({ price: null, fetchedAt: Date.now(), error: "QUOTE_FAILED" }));
-					return {
-						...holding,
-						live_price: quote.price,
-						// 抓取时刻交给前端判断「旧不旧」，异常原因用来区分「查不到」和「服务挂了」
-						live_price_at: quote.fetchedAt,
-						live_price_error: quote.error,
-					};
-				}),
-			);
+			// 结构与报价刻意解耦：这里只回稳定的持仓结构、live_price 先给 null，报价由首页卡片
+			// 挂载后各自并行调 /api/quotes/:symbol 补齐。以前在这里 Promise.all 等所有报价回来才
+			// 响应，冷缓存时首屏被 N 个串起来的上游往返拖住；拆开后结构瞬时到、报价各自到达，
+			// 上游调用次数不变（仍是每个标的一次）。
+			const holdings = rawHoldings.map((holding) => ({
+				...holding,
+				live_price: null,
+				live_price_at: null,
+				live_price_error: null,
+			}));
 			return json({ holdings });
 		}
 		if (second === "sell" && method === "POST") {

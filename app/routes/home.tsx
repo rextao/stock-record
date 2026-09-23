@@ -8,6 +8,7 @@ import { EmptyState } from "../common/components/EmptyState";
 import { FloatingActionButton } from "../common/components/FloatingActionButton";
 import { ConnectionStatusIndicator } from "../common/network/ConnectionStatusBanner";
 import { fetchHoldings, sellByItem } from "../api/trading";
+import { readHoldingsCache, writeHoldingsCache } from "../features/trade-record/sessionCache";
 import styles from "./home.module.less";
 
 // 走势页组件放在 features/ 里、由本文件静态依赖：RR 会把 routes/ 下的路由模块
@@ -38,8 +39,10 @@ const PULL_THRESHOLD = 60;
 // ==========================================
 export default function HomeRoute() {
 	const navigate = useNavigate();
-	const [holdings, setHoldings] = useState<any[]>([]);
-	const [loading, setLoading] = useState(true);
+	// 首屏先用上次缓存的持仓结构垫（切 Tab / 冷启动秒开），下面的 effect 再后台重拉纠正。
+	// loading 只在确实没有缓存时才转圈，有缓存就直接出列表、不闪「加载中」。
+	const [holdings, setHoldings] = useState<any[]>(() => readHoldingsCache() ?? []);
+	const [loading, setLoading] = useState(() => readHoldingsCache() === null);
 	const [sellHolding, setSellHolding] = useState<any>(null);
 
 	/*
@@ -50,11 +53,18 @@ export default function HomeRoute() {
 	 */
 	useEffect(() => {
 		const controller = new AbortController();
+		// 有缓存时首屏已拿缓存渲染，这次拉取只是后台重新校验：失败别打扰用户（旧列表还在），
+		// 只有冷启动（无缓存）失败才 Toast。
+		const hadCache = readHoldingsCache() != null;
 		fetchHoldings({ signal: controller.signal })
-			.then((res) => setHoldings(res.holdings || []))
+			.then((res) => {
+				const list = res.holdings || [];
+				setHoldings(list);
+				writeHoldingsCache(list);
+			})
 			.catch((error: any) => {
 				if (controller.signal.aborted) return;
-				Toast.show(error?.message || "加载失败");
+				if (!hadCache) Toast.show(error?.message || "加载失败");
 			})
 			.finally(() => {
 				if (controller.signal.aborted) return;
@@ -64,14 +74,15 @@ export default function HomeRoute() {
 	}, []);
 
 	/*
-	 * 下拉刷新 / 卖出后重新拉一次 /api/holdings，**不带 force**。
-	 * 服务端只缓存成功的报价（失败不写缓存），所以正常标的直接命中缓存、上次失败的自然重试，
-	 * 正是「缓存期内用缓存、只重拉异常数据」的效果。强刷单个标的走卡片上的刷新按钮。
+	 * 下拉刷新 / 卖出后重新拉一次 /api/holdings。这个接口现在只回持仓结构（不含报价），
+	 * 拉回来写进 sessionCache；报价由各卡片按新鲜度自行补拉，强刷单个标的走卡片上的刷新按钮。
 	 */
 	const reloadHoldings = async () => {
 		try {
 			const res = await fetchHoldings();
-			setHoldings(res.holdings || []);
+			const list = res.holdings || [];
+			setHoldings(list);
+			writeHoldingsCache(list);
 		} catch (error: any) {
 			Toast.show(error?.message || "刷新失败");
 		}

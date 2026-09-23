@@ -4,6 +4,7 @@ import { AlertTriangle, ChartLine, ChevronDown, ChevronUp, RefreshCw } from 'luc
 import clsx from 'clsx';
 import { Toast } from 'antd-mobile';
 import { ApiError, fetchQuote } from '../../../api/trading';
+import { readQuoteCache, writeQuoteCache } from '../sessionCache';
 
 // 走势页路径常量从走势页模块导入，也是把走势页代码拉进首页 chunk 的真实引用（见该模块注释）
 import { historyPath } from '../../stock-chart/pages/HistoryPage';
@@ -84,7 +85,12 @@ const formatAge = (ms: number) => {
 
 export function HoldingCard({ holding }: { holding: any }) {
     const [expanded, setExpanded] = useState(true);
-    const [quote, setQuote] = useState<QuoteState>(() => quoteFromHolding(holding));
+    const [quote, setQuote] = useState<QuoteState>(() => {
+        const fromHolding = quoteFromHolding(holding);
+        if (fromHolding.price != null) return fromHolding;
+        // /api/holdings 现在不回报价，用上次这张卡自己拉到的价先垫上（切 Tab 秒回）
+        return readQuoteCache(holding.item_symbol) ?? fromHolding;
+    });
     const [refreshing, setRefreshing] = useState(false);
     // 刷新失败：价格照旧显示（旧价比 `--` 有用），只把它标成异常色
     const [refreshFailed, setRefreshFailed] = useState(false);
@@ -93,10 +99,15 @@ export function HoldingCard({ holding }: { holding: any }) {
     const now = useSharedNow();
     const navigate = useNavigate();
 
-    // loader 重新校验后，服务端数据视为权威，覆盖掉本地手动刷新的结果
+    // 服务端若带回报价（当前 /api/holdings 恒为 null，这段是兼容旧结构 / 将来又在列表接口
+    // 塞报价的情况），视为权威、覆盖本地结果并写回缓存；为 null 时早 return，别把挂载时
+    // 从缓存或后台补到的价格冲掉。
     useEffect(() => {
-        setQuote(quoteFromHolding(holding));
+        const fromHolding = quoteFromHolding(holding);
+        if (fromHolding.price == null) return;
+        setQuote(fromHolding);
         setRefreshFailed(false);
+        writeQuoteCache(holding.item_symbol, fromHolding);
     }, [holding.live_price, holding.live_price_at, holding.live_price_error]);
 
     useEffect(() => () => {
@@ -119,6 +130,29 @@ export function HoldingCard({ holding }: { holding: any }) {
         : 0;
     const alertClass = alertClassForBreach(worstBreachPct);
 
+    // 挂载时按需补价：/api/holdings 只回结构，报价由每张卡片各自拉。
+    // 有缓存且够新（≤5 分钟，与标黄阈值一致）就直接用、不打网；否则后台拉一次
+    // （不带 refresh：走服务端两级缓存，不消耗手动刷新那条强刷链路）。失败静默 ——
+    // 保留旧价，等下次挂载或用户手动刷新再试，后台补价不该弹 Toast 打扰。
+    useEffect(() => {
+        if (!hasSymbol) return;
+        if (quote.price != null && quote.fetchedAt != null && Date.now() - quote.fetchedAt <= STALE_AFTER_MS) return;
+        const controller = new AbortController();
+        fetchQuote(holding.item_symbol, { signal: controller.signal })
+            .then((next) => {
+                if (controller.signal.aborted) return;
+                const fetched: QuoteState = { price: next.price, fetchedAt: next.fetchedAt ?? Date.now(), error: null };
+                setQuote(fetched);
+                setRefreshFailed(false);
+                writeQuoteCache(holding.item_symbol, fetched);
+            })
+            .catch(() => {
+                // 后台补价失败静默：留旧价，不 Toast
+            });
+        return () => controller.abort();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [holding.item_symbol]);
+
     const handleRefresh = async (event: MouseEvent<HTMLButtonElement>) => {
         // 卡片外层套着「点击进详情」和 SwipeAction，不拦住就会误跳页
         event.stopPropagation();
@@ -128,8 +162,10 @@ export function HoldingCard({ holding }: { holding: any }) {
         setRefreshing(true);
         try {
             const next = await fetchQuote(holding.item_symbol, { refresh: true });
-            setQuote({ price: next.price, fetchedAt: next.fetchedAt ?? Date.now(), error: null });
+            const refreshed: QuoteState = { price: next.price, fetchedAt: next.fetchedAt ?? Date.now(), error: null };
+            setQuote(refreshed);
             setRefreshFailed(false);
+            writeQuoteCache(holding.item_symbol, refreshed);
         } catch (error: any) {
             // 保留旧价和旧的抓取时刻：失败不该让能看的价格消失，也不该伪造新鲜度
             setQuote((prev) => ({ ...prev, error: error?.reason || error?.message || '刷新失败' }));

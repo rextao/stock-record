@@ -9,6 +9,7 @@ import type {
 } from "../features/trade-record/types";
 import type { HistoryRange, PriceHistory } from "../features/stock-chart/types";
 import { reportRequestNetworkFailure } from "../common/network/connectionStore";
+import { invalidateTradingListCaches } from "../features/trade-record/sessionCache";
 
 export interface StockSearchResult {
 	symbol: string;
@@ -80,6 +81,16 @@ function patchJson<T>(path: string, body: unknown, options: RequestOptions = {})
 	});
 }
 
+/**
+ * 任何会改动持仓 / 交易的写操作成功后，清掉本地结构缓存（sessionCache）：下次进首页 /
+ * 图表就从零重拉最新结构，首屏不再拿旧数据垫。链式调用透传返回值、不改变调用方类型。
+ * 市场报价与用户买卖无关，不在这里清（报价缓存由卡片自己按新鲜度管理）。
+ */
+const afterMutation = <T>(result: T): T => {
+	invalidateTradingListCaches();
+	return result;
+};
+
 // ---------- 标的 ----------
 export const fetchItems = (options: RequestOptions = {}) =>
 	request<{ items: ItemWithUsage[] }>("/api/items", { signal: options.signal });
@@ -92,10 +103,10 @@ export const createItem = (
 export const updateItem = (
 	id: number,
 	payload: { name: string; symbol: string; description: string },
-) => patchJson<{ success: true }>(`/api/items/${id}`, payload);
+) => patchJson<{ success: true }>(`/api/items/${id}`, payload).then(afterMutation);
 
 export const deleteItem = (id: number) =>
-	request<{ success: true; deletedId: number }>(`/api/items/${id}`, { method: "DELETE" });
+	request<{ success: true; deletedId: number }>(`/api/items/${id}`, { method: "DELETE" }).then(afterMutation);
 
 // ---------- 持仓 ----------
 export const fetchHoldings = (options: RequestOptions = {}) =>
@@ -105,7 +116,7 @@ export const fetchHoldingDetail = (itemId: number, options: RequestOptions = {})
 	request<HoldingDetailPayload>(`/api/holdings/${itemId}`, { signal: options.signal });
 
 export const sellByItem = (payload: { itemId: number; price: number; qty: number }) =>
-	postJson<{ success: true }>("/api/holdings/sell", payload);
+	postJson<{ success: true }>("/api/holdings/sell", payload).then(afterMutation);
 
 // ---------- 单标的报价 ----------
 export interface QuotePayload {
@@ -156,21 +167,21 @@ export const createTrade = (payload: {
 	stopLossPrice: number;
 	buyQuantity: number;
 	notes?: string;
-}) => postJson<{ id: number }>("/api/trades", payload);
+}) => postJson<{ id: number }>("/api/trades", payload).then(afterMutation);
 
 export const sellTrade = (id: number, payload: { price: number; qty: number }) =>
-	postJson<{ success: true }>(`/api/trades/${id}/sell`, payload);
+	postJson<{ success: true }>(`/api/trades/${id}/sell`, payload).then(afterMutation);
 
 export const deleteTrade = (id: number) =>
-	request<{ deleted: true }>(`/api/trades/${id}`, { method: "DELETE" });
+	request<{ deleted: true }>(`/api/trades/${id}`, { method: "DELETE" }).then(afterMutation);
 
 /** 改买入时刻。传完整的 `YYYY-MM-DD HH:mm:ss`，走势页改日期时会保留原时分秒 */
 export const updateTradeBuyTime = (id: number, buyTime: string) =>
-	patchJson<{ success: true }>(`/api/trades/${id}`, { buyTime });
+	patchJson<{ success: true }>(`/api/trades/${id}`, { buyTime }).then(afterMutation);
 
 /** 改某条卖出记录的成交时刻，格式同上 */
 export const updateSellRecordTime = (id: number, sellTime: string) =>
-	patchJson<{ success: true }>(`/api/sell-records/${id}`, { sellTime });
+	patchJson<{ success: true }>(`/api/sell-records/${id}`, { sellTime }).then(afterMutation);
 
 // ---------- 行情搜索 ----------
 export const searchStocks = (q: string, options: RequestOptions = {}) =>

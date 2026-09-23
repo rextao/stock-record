@@ -31,7 +31,7 @@ app/
   root.tsx                  HTML 外壳、主题引导脚本、SW 注册脚本（生产环境内联在 <head>）
   routes.ts                 路由表；BasicLayout 内的页面有 TabBar，外面的没有
   routes/                   页面，每个页面一个同名 .module.less
-  features/                 业务模块（trade-record、stock-chart）：组件、类型，走势页组件在 stock-chart/pages
+  features/                 业务模块（trade-record、stock-chart）：组件、类型；trade-record/sessionCache.ts 是会话内 SWR 缓存，走势页组件在 stock-chart/pages
   common/                   layouts / components / hooks / theme / pwa / network（全局连通性状态）
   api/trading.ts            前端请求封装
   styles/                   tokens.less（CSS 变量·主题令牌）、variables.less（Less 变量·自动注入）、global.less
@@ -80,7 +80,7 @@ TTL：`QUOTE_CACHE_TTL` 默认 600s，`SEARCH_CACHE_TTL` 默认 86400s，`HISTOR
 
 报价对外走 `IStockService.getQuote(symbol, {force})` 返回 `LiveQuote {price, fetchedAt, error}`（provider 仍只返回裸数字），缓存 key 是 `quote/v2/<SYMBOL>` —— 值形状变过，v2 用来甩掉 L2 里残留的旧纯数字。首页判断「数据旧了」用的是 `fetchedAt`（我们抓取的时刻），**不是行情自带时间戳**：休市期间价格本来不动，用后者会把所有标的常年标黄。手动刷新走 `GET /api/quotes/:symbol?refresh=1`（单标的粒度省 Finnhub 的 60 次/分钟额度，force 时先 invalidate 再回填），取不到价格返回 502 + 机器可读 `reason`。卡片刷新失败时**保留旧价只标成异常色、不清成 `--`、也不改 `fetchedAt`**，原因用 `Toast` 报（移动端没 hover，写进 `title` 等于看不见），文案按 `ApiError.reason`/`status` 映射（裸 message 对所有失败都是同一句），刷新按钮再给 3s 冷却防连点打爆额度。provider 缺凭证要 **throw `MISSING_API_KEY`、不能 return null**，否则被归成 `NO_QUOTE`，把配置问题报成「查不到这个代码」。
 
-失败的报价**刻意不写缓存**，所以首页下拉刷新只要重新拉一次 `/api/holdings` 就自动是「好的用缓存、异常的重拉」，不需要加 force 参数。首页数据走**页内 `useEffect` 而不是 `clientLoader`**：RR7 的 clientLoader 阻塞路由渲染，PWA 桌面冷启动会卡在全屏 HydrateFallback「加载中」一两秒；改页内异步拉数据后冷启动瞬时进首页、loading 收在列表区内，别改回 clientLoader。
+`/api/holdings`（及 `/api/trades`）**只回结构、不含报价**（`live_price` 恒 null），报价由卡片挂载后各自并行调 `/api/quotes/:symbol` 补齐（解耦慢报价，否则冷缓存首屏要等 N 个上游把整列表堵住）；失败报价服务端**刻意不写缓存**，卡片按「超 5min 标黄 + 挂载/手动补拉」自己重试。首页/图表数据走**页内 `useEffect` 而非 `clientLoader`**：RR7 的 clientLoader 阻塞路由渲染，PWA 桌面冷启动会卡在全屏 HydrateFallback「加载中」一两秒；改页内异步拉数据后冷启动瞬时进首页、loading 收在列表区内，别改回 clientLoader。结构列表 + 单标的报价再叠一层**应用层会话缓存** `features/trade-record/sessionCache.ts`（模块级内存、TTL 10min、SWR：切 Tab 先秒开旧数据再后台重校验，写操作在 `api/trading.ts` 的 `afterMutation` 精确失效，报价 price 为 null 不写）—— **刻意放应用层不落 SW**：SW 对 `/api` 用 NetworkFirst 且排除 `/api/quotes`，报价不该在网络层被回放。
 
 antd-mobile 的 `PullToRefresh` 有两个必须一起处理的坑。一，它把手势绑在自己的根节点上，而那个节点**只有内容高度**：内容不满一屏时（首页只有一张卡片）卡片下方的空白不在它里面，从空白处下拉没反应；修法是把它和内部 `.adm-pull-to-refresh-content` 一路 `flex:1` 撑满滚动区（见 `home.module.less` 的 `.scrollArea`），**别给它们加 `min-height:0`**（否则内容多时顶不高外层、`.main` 就不滚了），并给 `.adm-pull-to-refresh-head` 补 `flex-shrink:0` 防止被同级 content 挤没。二，**必须显式传 `headHeight`/`threshold`**（见 `home.tsx` 的 `PULL_HEAD_HEIGHT`）：默认值是 render 时现算的 `convertPx(40)`，而 `convertPx` 量的是 `.adm-px-tester` 探针，那条 CSS 在 antd 的动态 chunk 里、不在 `index.html` 的 head，首屏第一次 render 量出来是 **0**；`headHeight=0` 会让橡皮筋公式恒返回 0，status 永远停在 `pulling`、松手只回弹，所以必须写死常量（首页现改页内 `useEffect` 拉数据会多次 render，但写死的常量与 render 时机无关、任何时候都取得到；历史上走 `clientLoader` 只 render 一次会把那个 0 永久留住，才有「首次进入拉不动、进二级页返回后就好了」）。排查时看 head 的 inline `style.height` 有没有变：不变就是 headHeight 为 0（不是 flex 压缩，别再往 CSS 上改）。
 

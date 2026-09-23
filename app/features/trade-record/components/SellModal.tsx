@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import clsx from 'clsx';
 import NumericKeypad from '../../../common/components/NumericKeypad';
 import { sanitizeDecimalInput, sanitizeIntegerInput } from '../../../utils/numberInput';
+import { readQuoteCache } from '../sessionCache';
 import styles from './SellModal.module.less';
 
 const FRACTIONS = [
@@ -84,8 +85,12 @@ export function SellModal({
     const costPrice = holding.weighted_avg_price || 0;
     const inputPrice = parseFloat(sellPrice) || 0;
     const inputQty = parseInt(sellQty, 10) || 0;
-    // 现价快填：holding 已带 live_price（首页卡片同款字段），没有就不显示按钮
-    const livePrice = typeof holding.live_price === 'number' ? holding.live_price : null;
+    // 现价快填：/api/holdings 不再带 live_price，回退到首页卡片写进 sessionCache 的报价缓存；
+    // 都没有（如详情页打开、或还没补到价）就不显示按钮。
+    const livePrice =
+        typeof holding.live_price === 'number'
+            ? holding.live_price
+            : readQuoteCache(holding.item_symbol)?.price ?? null;
 
     const isValidInput = inputPrice > 0 && inputQty > 0;
 
