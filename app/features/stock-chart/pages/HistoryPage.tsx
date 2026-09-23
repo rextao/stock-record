@@ -23,7 +23,8 @@ import {
     type PriceHistory,
     type TradeMark,
 } from '../types'
-import type { HoldingDetailPayload, HoldingTradeDetail } from '../../../features/trade-record/types'
+import type { HoldingDetailPayload, HoldingTradeDetail, SellRecord } from '../../../features/trade-record/types'
+import { isLaterSell } from '../../trade-record/lastSell'
 import {
     invalidateHistoryCache,
     readHistoryCache,
@@ -145,22 +146,25 @@ function toMarks(trades: HoldingTradeDetail[], offsetSeconds: number): TradeMark
     return marks.sort((a, b) => a.time.localeCompare(b.time))
 }
 
-/** 最近一次卖出：水平参考线的价格和这笔的收益 */
+/** 最近一次卖出：水平参考线的价格和这笔的收益。
+ *  「最近」的判定与服务端 SQL / 图表排行共用同一口径（sell_time 再 id 兜底），见 lastSell.ts。 */
 function toLastSell(trades: HoldingTradeDetail[], offsetSeconds: number): LastSellLine | null {
-    let latestTime = ''
-    let line: LastSellLine | null = null
-    trades.forEach((trade) => {
-        trade.sell_records?.forEach((record) => {
-            if (!record.sell_time || record.sell_time <= latestTime) return
-            latestTime = record.sell_time
-            line = {
-                price: record.sell_price,
-                profit: (record.sell_price - trade.current_price) * record.sell_quantity,
-                date: toZonedYmd(record.sell_time, offsetSeconds),
-            }
-        })
-    })
-    return line
+    type LatestSell = { record: SellRecord; trade: HoldingTradeDetail }
+    let best: LatestSell | null = null
+    // 刻意用 for...of 而不是 forEach：best 是在循环里重新赋值的 let，闭包里赋值会让 TS 的
+    // 控制流分析在循环外仍把它收窄成 null（后续再取就成了 never），同作用域的 for 循环才narrow 正确。
+    for (const trade of trades) {
+        for (const record of trade.sell_records ?? []) {
+            if (!record.sell_time) continue
+            if (!best || isLaterSell(record, best.record)) best = { record, trade }
+        }
+    }
+    if (!best) return null
+    return {
+        price: best.record.sell_price,
+        profit: (best.record.sell_price - best.trade.current_price) * best.record.sell_quantity,
+        date: toZonedYmd(best.record.sell_time, offsetSeconds),
+    }
 }
 
 export default function HoldingsHistoryRoute() {

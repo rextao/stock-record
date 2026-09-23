@@ -2,10 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { useLoaderData, useNavigate, useSubmit, redirect } from "react-router";
 import { NavBar, Button, Toast } from "antd-mobile";
 import clsx from "clsx";
-import { createTrade, fetchItems } from "../../api/trading";
+import { createTrade, fetchItems, fetchQuote } from "../../api/trading";
+import { RefreshCw } from "lucide-react";
 import NumericKeypad, { NUMERIC_KEYPAD_ID } from "../../common/components/NumericKeypad";
 import PlainTextArea from "../../common/components/PlainTextArea";
 import { sanitizeDecimalInput, sanitizeIntegerInput } from "../../utils/numberInput";
+import { readQuoteCache, writeQuoteCache } from "../../features/trade-record/sessionCache";
+import {
+    describeQuoteError,
+    QUOTE_STALE_AFTER_MS,
+    QUOTE_REFRESH_COOLDOWN_MS,
+} from "../../features/trade-record/quote";
 import styles from "./new.module.less";
 
 // ==========================================
@@ -70,6 +77,14 @@ export default function NewTradeRoute() {
     const [stopLossPrice, setStopLossPrice] = useState("");
     const [buyQuantity, setBuyQuantity] = useState("");
     const [notes, setNotes] = useState("");
+
+    // 「获取现价」按钮状态：拉取中转圈、失败后短冷却，避免连点打爆行情额度
+    const [fetchingPrice, setFetchingPrice] = useState(false);
+    const [priceCooling, setPriceCooling] = useState(false);
+    const priceCooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => () => {
+        if (priceCooldownTimer.current) clearTimeout(priceCooldownTimer.current);
+    }, []);
 
     /*
      * 价格区的四个格子刻意不使用原生输入框的焦点，改成「button 显示值 + 自绘数字键盘」。
@@ -174,10 +189,37 @@ export default function NewTradeRoute() {
 
     // 选中标的的最近卖出价，以及与「当前价」的距离百分比（当前价未填时不算）
     const selectedItem = selectedItemId != null ? items.find((it) => it.id === selectedItemId) : undefined;
+    const selectedSymbol = String(selectedItem?.symbol || "").trim();
     const lastSellPrice = selectedItem?.last_sell_price ?? null;
     const lastSellGap = (lastSellPrice !== null && current > 0)
         ? ((current - lastSellPrice) / lastSellPrice) * 100
         : null;
+
+    /*
+     * 「获取现价」：把当前价一键填成实时报价。与首页卡片、卖出弹窗共用同一套报价链路 ——
+     * 先读 sessionCache（够新就直接填、不打网），miss 再走 fetchQuote 并写回缓存；
+     * 失败用共享的 describeQuoteError 文案 Toast，并按 QUOTE_REFRESH_COOLDOWN_MS 冷却防连点。
+     */
+    const handleFetchCurrentPrice = async () => {
+        if (!selectedSymbol || fetchingPrice || priceCooling) return;
+        const cached = readQuoteCache(selectedSymbol);
+        if (cached?.price != null && cached.fetchedAt != null && Date.now() - cached.fetchedAt <= QUOTE_STALE_AFTER_MS) {
+            setCurrentPrice(cached.price.toFixed(2));
+            return;
+        }
+        setFetchingPrice(true);
+        try {
+            const next = await fetchQuote(selectedSymbol);
+            setCurrentPrice(next.price.toFixed(2));
+            writeQuoteCache(selectedSymbol, { price: next.price, fetchedAt: next.fetchedAt ?? Date.now(), error: null });
+        } catch (error) {
+            Toast.show({ icon: "fail", content: describeQuoteError(error) });
+            setPriceCooling(true);
+            priceCooldownTimer.current = setTimeout(() => setPriceCooling(false), QUOTE_REFRESH_COOLDOWN_MS);
+        } finally {
+            setFetchingPrice(false);
+        }
+    };
 
     const upside = (current > 0 && target > 0) ? ((target - current) / current) * 100 : null;
     const downside = (current > 0 && stopLoss > 0) ? ((current - stopLoss) / current) * 100 : null;
@@ -272,7 +314,20 @@ export default function NewTradeRoute() {
                 )}
 
                 {/* 2. 价格与数量信息 */}
-                <div className={clsx(styles.sectionTitle, styles.sectionTitleSpaced)}>价格信息</div>
+                <div className={clsx(styles.sectionTitle, styles.sectionTitleSpaced, styles.priceHeader)}>
+                    <span>价格信息</span>
+                    {selectedSymbol && (
+                        <button
+                            type="button"
+                            className={clsx(styles.fetchPriceButton, fetchingPrice && styles.fetchPriceSpinning)}
+                            onClick={handleFetchCurrentPrice}
+                            disabled={fetchingPrice || priceCooling}
+                        >
+                            <RefreshCw size={13} />
+                            获取现价
+                        </button>
+                    )}
+                </div>
 
                 <div className={styles.priceGrid}>
                     {priceFields.map((field, index) => {

@@ -42,6 +42,46 @@
     margin-top: 32px;
 }
 
+/* 「价格信息」标题行：左标题、右「获取现价」快填按钮，与卖出弹窗的 priceLabelRow 同款 */
+.priceHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* 快填当前价按钮：照抄 SellModal 的 fillPriceButton 口径（accent 描边 + 软底色） */
+.fetchPriceButton {
+    display: inline-flex;
+    align-items: center;
+    gap: @gap-xs;
+    padding: 4px @gap-md;
+    background-color: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: @radius-pill;
+    color: var(--accent);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+
+    &:active {
+        background-color: var(--accent-soft-strong);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+    }
+}
+
+/* 拉取中让图标转圈，给用户「正在取价」的反馈 */
+.fetchPriceSpinning svg {
+    animation: fetchPriceSpin 0.8s linear infinite;
+}
+
+@keyframes fetchPriceSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .emptyItems {
     background-color: var(--card-bg);
     border: 1px solid var(--border);

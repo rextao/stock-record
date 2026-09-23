@@ -6,6 +6,7 @@ import PnlTrendChart from '../features/stock-chart/components/PnlTrendChart'
 import { EmptyState } from '../common/components/EmptyState'
 import { fetchTrades } from '../api/trading'
 import { readTradesCache, writeTradesCache } from '../features/trade-record/sessionCache'
+import { isLaterSell } from '../features/trade-record/lastSell'
 import styles from './chart.module.less'
 
 // 直接使用纯前端复用的计算库
@@ -89,7 +90,7 @@ export default function ChartRoute() {
         let losingTradesCount = 0;
         const rankingMap = new Map<
             number,
-            { id: number; name: string; profit: number; lastSellPrice: number; lastSellTime: string }
+            { id: number; name: string; profit: number; lastSellPrice: number; lastSellTime: string; lastSellId: number }
         >();
         const daily = new Map<string, number>();
 
@@ -112,10 +113,11 @@ export default function ChartRoute() {
                 const prev = rankingMap.get(t.item_id);
                 if (prev) {
                     prev.profit += profit;
-                    // sell_time 是可字面量排序的 UTC 墙上时间，直接比大小取最新一笔
-                    if (rec.sell_time > prev.lastSellTime) {
+                    // 「最近一次卖出」与服务端 SQL / 走势页共用同一口径（sell_time 再 id 兜底），见 lastSell.ts
+                    if (isLaterSell(rec, { sell_time: prev.lastSellTime, id: prev.lastSellId })) {
                         prev.lastSellTime = rec.sell_time;
                         prev.lastSellPrice = rec.sell_price;
+                        prev.lastSellId = rec.id;
                     }
                 } else {
                     rankingMap.set(t.item_id, {
@@ -124,6 +126,7 @@ export default function ChartRoute() {
                         profit,
                         lastSellPrice: rec.sell_price,
                         lastSellTime: rec.sell_time,
+                        lastSellId: rec.id,
                     });
                 }
             }

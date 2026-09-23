@@ -3,8 +3,14 @@ import { useNavigate } from 'react-router';
 import { AlertTriangle, ChartLine, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import clsx from 'clsx';
 import { Toast } from 'antd-mobile';
-import { ApiError, fetchQuote } from '../../../api/trading';
+import { fetchQuote } from '../../../api/trading';
 import { readQuoteCache, writeQuoteCache } from '../sessionCache';
+import {
+    describeQuoteError,
+    quoteReasonText,
+    QUOTE_STALE_AFTER_MS,
+    QUOTE_REFRESH_COOLDOWN_MS,
+} from '../quote';
 
 // 走势页路径常量从走势页模块导入，也是把走势页代码拉进首页 chunk 的真实引用（见该模块注释）
 import { historyPath } from '../../stock-chart/pages/HistoryPage';
@@ -27,39 +33,6 @@ const alertClassForBreach = (breachPct: number): string | undefined => {
     if (breachPct <= 3) return styles.cardAlert1;
     if (breachPct <= 7) return styles.cardAlert2;
     return styles.cardAlert3;
-};
-
-// 超过这个时长就把现价标黄，提示「该刷一下了」。
-// 判断依据是服务端的抓取时刻，不是行情自带的时间戳 —— 休市时价格本来不动，
-// 用行情时间戳会让所有标的一直是黄色，等于没有提示。
-const STALE_AFTER_MS = 5 * 60 * 1000;
-
-// 刷新失败后的冷却时间。Finnhub 免费档只有 60 次/分钟，失败时用户往往会连点，
-// 越点越容易把额度打满，反而更取不到价
-const REFRESH_COOLDOWN_MS = 3000;
-
-const REASON_TEXT: Record<string, string> = {
-    MISSING_API_KEY: '行情凭证未配置，暂时取不到价格',
-    NO_QUOTE: '行情源查不到该代码，检查一下代码是否正确',
-    EMPTY_SYMBOL: '该条目没有登记股票代码',
-};
-
-/**
- * 把报价接口的错误翻成「说清该怎么办」的中文。
- *
- * 判据是 `ApiError.status` + 服务端给的机器可读 `reason`，不是裸 `message` ——
- * 服务端的 message 对所有取不到价的情况都是同一句「行情接口异常」，分不出是
- * 代码写错了、凭证没配还是上游挂了。fetch 自己抛错（离线、DNS）时没有 status。
- */
-const describeQuoteError = (error: unknown): string => {
-    if (error instanceof ApiError) {
-        const known = error.reason ? REASON_TEXT[error.reason] : undefined;
-        if (known) return known;
-        if (error.status === 429) return '行情源限流，过一会儿再试';
-        if (error.status >= 500) return '行情接口异常，请稍后重试';
-        return error.message || '刷新失败';
-    }
-    return '网络不可用，请检查连接后重试';
 };
 
 interface QuoteState {
@@ -118,7 +91,7 @@ export function HoldingCard({ holding }: { holding: any }) {
     // 自定义条目可以没有代码：没代码就没有行情，别把它当成「报价异常」
     const hasSymbol = !!String(holding.item_symbol || '').trim();
     const age = quote.fetchedAt != null ? now - quote.fetchedAt : null;
-    const stale = hasPrice && age != null && age > STALE_AFTER_MS;
+    const stale = hasPrice && age != null && age > QUOTE_STALE_AFTER_MS;
 
     // 跌破止损的最大幅度：只看还有剩余仓位、且止损价有效的 sub_trade
     const worstBreachPct = hasPrice
@@ -136,7 +109,7 @@ export function HoldingCard({ holding }: { holding: any }) {
     // 保留旧价，等下次挂载或用户手动刷新再试，后台补价不该弹 Toast 打扰。
     useEffect(() => {
         if (!hasSymbol) return;
-        if (quote.price != null && quote.fetchedAt != null && Date.now() - quote.fetchedAt <= STALE_AFTER_MS) return;
+        if (quote.price != null && quote.fetchedAt != null && Date.now() - quote.fetchedAt <= QUOTE_STALE_AFTER_MS) return;
         const controller = new AbortController();
         fetchQuote(holding.item_symbol, { signal: controller.signal })
             .then((next) => {
@@ -172,7 +145,7 @@ export function HoldingCard({ holding }: { holding: any }) {
             setRefreshFailed(true);
             Toast.show({ icon: 'fail', content: describeQuoteError(error) });
             setCooling(true);
-            cooldownTimer.current = setTimeout(() => setCooling(false), REFRESH_COOLDOWN_MS);
+            cooldownTimer.current = setTimeout(() => setCooling(false), QUOTE_REFRESH_COOLDOWN_MS);
         } finally {
             setRefreshing(false);
         }
@@ -213,7 +186,7 @@ export function HoldingCard({ holding }: { holding: any }) {
                                 title={
                                     !hasSymbol
                                         ? '该条目没有登记股票代码，不拉行情'
-                                        : (quote.error ? REASON_TEXT[quote.error] : undefined) ||
+                                        : quoteReasonText(quote.error) ||
                                           quote.error ||
                                           '报价异常'
                                 }

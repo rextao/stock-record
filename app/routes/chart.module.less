@@ -150,12 +150,12 @@
     font-size: 16px;
 }
 
-/* 排行右侧：最近卖出价 + 盈亏，竖排右对齐 */
+/* 排行右侧：最近卖出价 + 盈亏同一行，最近卖出在左、盈亏在右 */
 .rankRight {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
+    flex-direction: row;
+    align-items: baseline;
+    gap: @gap-md;
 }
 
 .rankLastSell {
