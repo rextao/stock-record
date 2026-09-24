@@ -11,6 +11,36 @@
     font-weight: 600;
 }
 
+/* 顶部 tab 切换：自绘分段控件，避开 antd 样式插入顺序坑 */
+.tabBar {
+    display: flex;
+    margin: 0 @gap-lg @gap-lg;
+    padding: 4px;
+    background-color: var(--surface-active);
+    border-radius: @radius-pill;
+}
+
+.tab {
+    flex: 1;
+    padding: 8px 0;
+    border: none;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 15px;
+    border-radius: @radius-pill;
+    transition: all 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.tabActive {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 2px var(--border-subtle);
+}
+
 /* 横向滚动的时间区间选择器 */
 .rangeBar {
     padding: 0 @gap-lg;
@@ -60,6 +90,44 @@
     font-size: 14px;
 }
 
+/* 盈亏模块：左右两块，中间竖分隔 */
+.pnlModule {
+    display: flex;
+    align-items: stretch;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: @radius-xl;
+    padding: @gap-xl @gap-md;
+    margin-bottom: @gap-md;
+}
+
+.pnlBlock {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: @gap-sm;
+}
+
+.pnlDivider {
+    width: 1px;
+    align-self: stretch;
+    background-color: var(--border);
+    margin: 0 @gap-md;
+}
+
+.pnlLabel {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.pnlValue {
+    font-size: 24px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
 .statGrid {
     display: flex;
     flex-wrap: wrap;
@@ -91,28 +159,6 @@
     color: var(--text-primary);
 }
 
-.totalCard {
-    background-color: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: @radius-xl;
-    padding: @gap-xl;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: @gap-md;
-}
-
-.totalLabel {
-    font-size: 16px;
-    color: var(--text-secondary);
-    margin-bottom: @gap-sm;
-}
-
-.totalValue {
-    font-size: 32px;
-    font-weight: 700;
-}
-
 .chartCard {
     background-color: var(--card-bg);
     border: 1px solid var(--border);
@@ -126,6 +172,7 @@
     border: 1px solid var(--border);
     border-radius: @radius-xl;
     padding: @gap-lg;
+    margin-bottom: @gap-md;
 }
 
 .rankTitle {
