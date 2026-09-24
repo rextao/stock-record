@@ -106,7 +106,7 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: @gap-sm;
 }
 
@@ -128,34 +128,42 @@
     font-variant-numeric: tabular-nums;
 }
 
-.statGrid {
+/* 累计盈利 / 累计亏损 / 交易胜率：与盈亏模块同款卡片，三列竖分隔，文案左对齐 */
+.summaryModule {
     display: flex;
-    flex-wrap: wrap;
-    gap: @gap-md;
-    margin-bottom: @gap-md;
-}
-
-.statBlock {
-    flex: 1;
-    min-width: 40%;
+    align-items: stretch;
     background-color: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: @radius-xl;
-    padding: @gap-lg;
+    padding: @gap-lg @gap-md;
+    margin-bottom: @gap-md;
+}
+
+.summaryBlock {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
+    gap: @gap-sm;
+    padding: 0 @gap-sm;
 }
 
-.statLabel {
-    font-size: 14px;
-    color: var(--text-muted);
-    margin-bottom: @gap-sm;
+.summaryDivider {
+    width: 1px;
+    align-self: stretch;
+    background-color: var(--border);
 }
 
-.statValue {
-    font-size: 20px;
+.summaryLabel {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.summaryValue {
+    font-size: 18px;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
     color: var(--text-primary);
 }
 

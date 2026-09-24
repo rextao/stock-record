@@ -29,10 +29,7 @@ import {
     enumerateDays,
 } from '../utils/dateRange'
 
-type Tone = 'default' | 'up' | 'down';
 type TabKey = 'pnl' | 'asset';
-
-const toneClass = (tone: Tone) => (tone === 'up' ? styles.up : tone === 'down' ? styles.down : undefined);
 
 const pnlClass = (value: number) => (value >= 0 ? styles.up : styles.down);
 
@@ -166,6 +163,8 @@ export default function ChartRoute() {
     // 全部时间的已实现盈亏 + 排行 + 胜率（盈亏分析不带日期筛选）
     const overall = useMemo(() => {
         let totalPnl = 0;
+        let profitSum = 0;
+        let lossSum = 0;
         let winning = 0;
         let losing = 0;
         const rankingMap = new Map<
@@ -201,14 +200,19 @@ export default function ChartRoute() {
                     });
                 }
             }
-            if (tradeProfit > 0) winning++;
-            else if (tradeProfit < 0) losing++;
+            if (tradeProfit > 0) {
+                winning++;
+                profitSum += tradeProfit;
+            } else if (tradeProfit < 0) {
+                losing++;
+                lossSum += tradeProfit;
+            }
         }
 
         const totalTrades = winning + losing;
         const winRate = totalTrades > 0 ? ((winning / totalTrades) * 100).toFixed(1) : '0';
         const ranking = Array.from(rankingMap.values()).sort((a, b) => b.profit - a.profit);
-        return { totalPnl, winning, losing, totalTrades, winRate, ranking };
+        return { totalPnl, profitSum, lossSum, winRate, ranking };
     }, [trades]);
 
     // 当前持仓的未实现浮盈：Σ (现价 - 持仓均价) * 剩余仓位，缺现价 / 无代码的跳过
@@ -276,14 +280,6 @@ export default function ChartRoute() {
         }
     };
 
-    // 渲染统计方块辅助组件
-    const StatBlock = ({ label, value, tone = 'default' }: { label: string; value: string; tone?: Tone }) => (
-        <div className={styles.statBlock}>
-            <span className={styles.statLabel}>{label}</span>
-            <span className={clsx(styles.statValue, toneClass(tone))}>{value}</span>
-        </div>
-    );
-
     return (
         <div className={styles.page}>
             <div className={styles.pageTitle}>图表</div>
@@ -337,6 +333,28 @@ export default function ChartRoute() {
                             </div>
                         </div>
 
+                        {/* 累计盈利 / 累计亏损 / 交易胜率 */}
+                        <div className={styles.summaryModule}>
+                            <div className={styles.summaryBlock}>
+                                <span className={styles.summaryLabel}>累计盈利</span>
+                                <span className={clsx(styles.summaryValue, styles.up)}>
+                                    {signed(overall.profitSum)}
+                                </span>
+                            </div>
+                            <div className={styles.summaryDivider} />
+                            <div className={styles.summaryBlock}>
+                                <span className={styles.summaryLabel}>累计亏损</span>
+                                <span className={clsx(styles.summaryValue, styles.down)}>
+                                    {signed(overall.lossSum)}
+                                </span>
+                            </div>
+                            <div className={styles.summaryDivider} />
+                            <div className={styles.summaryBlock}>
+                                <span className={styles.summaryLabel}>交易胜率</span>
+                                <span className={styles.summaryValue}>{overall.winRate + '%'}</span>
+                            </div>
+                        </div>
+
                         {/* 盈亏排行 */}
                         <div className={styles.rankCard}>
                             <div className={styles.rankTitle}>盈亏排行</div>
@@ -357,14 +375,6 @@ export default function ChartRoute() {
                                     </div>
                                 ))
                             )}
-                        </div>
-
-                        {/* 四宫格核心数据 */}
-                        <div className={styles.statGrid}>
-                            <StatBlock label="总交易" value={overall.totalTrades + '笔'} />
-                            <StatBlock label="胜率" value={overall.winRate + '%'} />
-                            <StatBlock label="盈利" value={overall.winning + '笔'} tone="up" />
-                            <StatBlock label="亏损" value={overall.losing + '笔'} tone="down" />
                         </div>
                     </div>
                 )
