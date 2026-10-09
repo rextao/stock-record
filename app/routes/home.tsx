@@ -129,12 +129,24 @@ export default function HomeRoute() {
 							holdings.map((holding: any) => (
 								<div key={holding.item_id} className={styles.cardWrapper}>
 									<SwipeAction
-										rightActions={[{
-											key: 'sell',
-											text: '卖出',
-											color: 'success',
-											onClick: () => setSellHolding(holding)
-										}]}
+										rightActions={[
+											// 数组顺序就是左滑展开后从左到右的顺序：actions-right 容器锚在轨道
+											// 右缘且默认 row 布局，第 0 项贴着卡片内容、最后一项在最外侧，
+											// 所以买入在内侧先露出、卖出保持在最右侧的主操作位。
+											{
+												key: 'buy',
+												text: '买入',
+												// 买入=红（涨）、卖出=绿（跌），沿用 App 的涨跌配色
+												color: 'danger',
+												onClick: () => navigate('/trade/new', { state: { itemId: holding.item_id } }),
+											},
+											{
+												key: 'sell',
+												text: '卖出',
+												color: 'success',
+												onClick: () => setSellHolding(holding),
+											},
+										]}
 									>
 										<div onClick={() => navigate(`/holdings/${holding.item_id}`)}>
 											{/* 将附带了 live_price 的 holding 传给卡片 */}

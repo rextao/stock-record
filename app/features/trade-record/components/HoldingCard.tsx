@@ -102,6 +102,10 @@ export function HoldingCard({ holding }: { holding: any }) {
           }, 0)
         : 0;
     const alertClass = alertClassForBreach(worstBreachPct);
+    // 最近一次卖出价及与现价的距离：服务端按标的取最近一条卖出记录，从没卖出过时为 null
+    const lastSellPrice = typeof holding.last_sell_price === 'number' ? holding.last_sell_price : null;
+    const lastSellPct =
+        lastSellPrice != null && hasPrice ? (((quote.price as number) - lastSellPrice) / lastSellPrice) * 100 : null;
 
     // 挂载时按需补价：/api/holdings 只回结构，报价由每张卡片各自拉。
     // 有缓存且够新（≤5 分钟，与标黄阈值一致）就直接用、不打网；否则后台拉一次
@@ -234,6 +238,19 @@ export function HoldingCard({ holding }: { holding: any }) {
                     </span>
                     {stale && <span className={styles.livePriceAge}>现价 {formatAge(age as number)}</span>}
                 </div>
+                {/* 最近卖出价：给「现在要不要接回」做参照，从没卖出过就不显示这一行 */}
+                {lastSellPrice != null && (
+                    <div className={styles.lastSellRow}>
+                        <span className={styles.lastSellLabel}>最近卖出价</span>
+                        <span className={styles.lastSellPrice}>{formatPrice(lastSellPrice)}</span>
+                        {lastSellPct != null && (
+                            <span className={clsx(styles.lastSellPct, pnlClass(lastSellPct))}>
+                                {lastSellPct >= 0 ? '+' : ''}
+                                {lastSellPct.toFixed(2)}%
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* 汇总区域暂时隐藏，数据和接口字段保留，方便后续恢复。 */}

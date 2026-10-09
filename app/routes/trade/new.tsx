@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLoaderData, useNavigate, useSubmit, redirect } from "react-router";
+import { useLoaderData, useNavigate, useSubmit, useLocation, redirect } from "react-router";
 import { NavBar, Button, Toast } from "antd-mobile";
 import clsx from "clsx";
 import { createTrade, fetchItems, fetchQuote } from "../../api/trading";
@@ -71,7 +71,11 @@ export default function NewTradeRoute() {
     const navigate = useNavigate();
     const submit = useSubmit();
 
-    const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+    // 首页卡片左滑「买入」把标的 id 随导航带过来，直接预选好；从 + 号进来时没有 state
+    const preselectedItemId = (useLocation().state as { itemId?: number } | null)?.itemId ?? null;
+    const [selectedItemId, setSelectedItemId] = useState<number | null>(
+        preselectedItemId != null && items.some((it) => it.id === preselectedItemId) ? preselectedItemId : null,
+    );
     const [currentPrice, setCurrentPrice] = useState("");
     const [targetPrice, setTargetPrice] = useState("");
     const [stopLossPrice, setStopLossPrice] = useState("");

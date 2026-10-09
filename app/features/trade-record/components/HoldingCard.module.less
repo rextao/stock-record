@@ -54,6 +54,29 @@
     color: var(--text-secondary);
 }
 
+.lastSellRow {
+    display: flex;
+    align-items: center;
+    gap: @gap-sm;
+    font-size: 12px;
+}
+
+.lastSellLabel {
+    color: var(--text-muted);
+}
+
+.lastSellPrice {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.lastSellPct {
+    margin-left: auto;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
 .livePrice {
     font-size: 14px;
     font-weight: 500;
@@ -166,6 +189,11 @@
     justify-content: space-between;
     padding: @gap-md 0;
     border-bottom: 1px solid var(--border);
+}
+
+.subTrade:last-child {
+    // 多笔持仓时，最后一笔下面不再画分隔线，避免和卡片底缘叠成一条粗线
+    border-bottom: none;
 }
 
 .subTradeLeft {
