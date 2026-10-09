@@ -290,13 +290,9 @@ export function HoldingCard({ holding }: { holding: any }) {
                             <div key={st.id} className={styles.subTrade}>
                                 <div className={styles.subTradeLeft}>
                                     <span className={styles.buyTime}>{formatShortTime(st.buy_time)}</span>
-                                    <span className={styles.buyPrice}>
-                                        <span className={styles.inlineLabel}>入: </span>
-                                        {formatPrice(st.current_price)}
-                                    </span>
-                                    <span className={styles.buyQty}>
-                                        <span className={styles.inlineLabel}>仓: </span>
-                                        {Math.floor(st.remaining)}
+                                    {/* 买入价与仓位合并成一行「价格（仓位）」，字号与预期列数字一致 */}
+                                    <span className={styles.buySummary}>
+                                        {formatPrice(st.current_price)}（{Math.floor(st.remaining)}）
                                     </span>
                                 </div>
 

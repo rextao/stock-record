@@ -108,4 +108,18 @@
     border-radius: @radius-xl;
     overflow: hidden;
     border: 1px solid var(--border);
+
+    /* 左滑操作按钮上下排布：卖出在上、买入在下。actions-right 容器默认是 row（左右排），
+       改成 column 后数组顺序即从上到下；按钮再 flex:1 平分整张卡的高度并居中文字，
+       铺满揭示区域，否则按钮上下会露出和卡片底色不一致的 swipe-action 根背景。 */
+    :global(.adm-swipe-action-actions-right) {
+        flex-direction: column;
+    }
+
+    :global(.adm-swipe-action-action-button.adm-button) {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 }

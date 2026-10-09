@@ -130,21 +130,20 @@ export default function HomeRoute() {
 								<div key={holding.item_id} className={styles.cardWrapper}>
 									<SwipeAction
 										rightActions={[
-											// 数组顺序就是左滑展开后从左到右的顺序：actions-right 容器锚在轨道
-											// 右缘且默认 row 布局，第 0 项贴着卡片内容、最后一项在最外侧，
-											// 所以买入在内侧先露出、卖出保持在最右侧的主操作位。
+											// 上下排布（列布局写在 home.module.less）：数组顺序即从上到下，
+											// 第 0 项在最上面，所以卖出在上、买入在下。
+											{
+												key: 'sell',
+												text: '卖出',
+												color: 'success',
+												onClick: () => setSellHolding(holding),
+											},
 											{
 												key: 'buy',
 												text: '买入',
 												// 买入=红（涨）、卖出=绿（跌），沿用 App 的涨跌配色
 												color: 'danger',
 												onClick: () => navigate('/trade/new', { state: { itemId: holding.item_id } }),
-											},
-											{
-												key: 'sell',
-												text: '卖出',
-												color: 'success',
-												onClick: () => setSellHolding(holding),
 											},
 										]}
 									>
