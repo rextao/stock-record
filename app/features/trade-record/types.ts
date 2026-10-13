@@ -19,6 +19,8 @@ export interface ItemWithUsage extends Item {
 	/** 该标的最近一次卖出价/时间；服务端按标的取最新一笔卖出（sell_time DESC）派生，从未卖过为 null。买入页用作参照 */
 	last_sell_price: number | null;
 	last_sell_time: string | null;
+	/** 最近一次卖出的数量（仓位），与 last_sell_price 同一笔卖出 */
+	last_sell_quantity: number | null;
 }
 
 export interface Trade {
@@ -79,6 +81,8 @@ export interface HoldingCard {
 	last_sell_price: number | null;
 	/** 最近一次卖出时间，与 last_sell_price 同源 */
 	last_sell_time: string | null;
+	/** 最近一次卖出的数量（仓位），与 last_sell_price 同源 */
+	last_sell_quantity: number | null;
 	trade_count: number;
 	sub_trades: HoldingSubTrade[];
 }

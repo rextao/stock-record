@@ -104,6 +104,7 @@ export function HoldingCard({ holding }: { holding: any }) {
     const alertClass = alertClassForBreach(worstBreachPct);
     // 最近一次卖出价及与现价的距离：服务端按标的取最近一条卖出记录，从没卖出过时为 null
     const lastSellPrice = typeof holding.last_sell_price === 'number' ? holding.last_sell_price : null;
+    const lastSellQty = typeof holding.last_sell_quantity === 'number' ? holding.last_sell_quantity : null;
     const lastSellPct =
         lastSellPrice != null && hasPrice ? (((quote.price as number) - lastSellPrice) / lastSellPrice) * 100 : null;
 
@@ -243,6 +244,9 @@ export function HoldingCard({ holding }: { holding: any }) {
                     <div className={styles.lastSellRow}>
                         <span className={styles.lastSellLabel}>最近卖出价</span>
                         <span className={styles.lastSellPrice}>{formatPrice(lastSellPrice)}</span>
+                        {lastSellQty != null && (
+                            <span className={styles.lastSellQty}>仓位 {lastSellQty}</span>
+                        )}
                         {lastSellPct != null && (
                             <span className={clsx(styles.lastSellPct, pnlClass(lastSellPct))}>
                                 {lastSellPct >= 0 ? '+' : ''}

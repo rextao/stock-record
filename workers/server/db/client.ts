@@ -64,6 +64,9 @@ export class TradingDB {
                           WHERE s.trade_id IN (SELECT id FROM trades WHERE item_id = i.id)) AS sell_count,
                         (SELECT sr.sell_price FROM sell_records sr JOIN trades t2 ON sr.trade_id = t2.id
                           WHERE t2.item_id = i.id ORDER BY sr.sell_time DESC, sr.id DESC LIMIT 1) AS last_sell_price,
+                        -- 仓位与上面两列取同一笔卖出：三条子查询的排序口径必须完全一致，否则数量会错配到别的卖出上
+                        (SELECT sr.sell_quantity FROM sell_records sr JOIN trades t2 ON sr.trade_id = t2.id
+                          WHERE t2.item_id = i.id ORDER BY sr.sell_time DESC, sr.id DESC LIMIT 1) AS last_sell_quantity,
                         (SELECT sr.sell_time  FROM sell_records sr JOIN trades t2 ON sr.trade_id = t2.id
                           WHERE t2.item_id = i.id ORDER BY sr.sell_time DESC, sr.id DESC LIMIT 1) AS last_sell_time
                  FROM items i
@@ -297,24 +300,24 @@ export class TradingDB {
             grouped.get(t.item_id)!.push(t);
         }
 
-        // 最近一次卖出价：按标的取，而不是只看未平仓的那几笔 —— 最近的卖出很可能发生在一笔已经清完的仓上。
+        // 最近一次卖出价与仓位：按标的取，而不是只看未平仓的那几笔 —— 最近的卖出很可能发生在一笔已经清完的仓上。
         // 批量卖出时同一标的多条记录共享 sell_time，所以再用 id 兜底排序。
         const itemIds = [...grouped.keys()];
-        const lastSellMap = new Map<number, { price: number; time: string }>();
+        const lastSellMap = new Map<number, { price: number; time: string; quantity: number }>();
         if (itemIds.length > 0) {
             const itemPlaceholders = itemIds.map(() => '?').join(',');
             const { results: sells } = await this.db
                 .prepare(
-                    `SELECT t.item_id as item_id, sr.sell_price as sell_price, sr.sell_time as sell_time
+                    `SELECT t.item_id as item_id, sr.sell_price as sell_price, sr.sell_quantity as sell_quantity, sr.sell_time as sell_time
                      FROM sell_records sr JOIN trades t ON sr.trade_id = t.id
                      WHERE t.item_id IN (${itemPlaceholders})
                      ORDER BY sr.sell_time ASC, sr.id ASC`
                 )
                 .bind(...itemIds)
-                .all<{ item_id: number; sell_price: number; sell_time: string }>();
+                .all<{ item_id: number; sell_price: number; sell_quantity: number; sell_time: string }>();
             // 升序遍历，后写覆盖前写，留下的就是最后一条
             for (const s of sells) {
-                lastSellMap.set(s.item_id, { price: s.sell_price, time: s.sell_time });
+                lastSellMap.set(s.item_id, { price: s.sell_price, quantity: s.sell_quantity, time: s.sell_time });
             }
         }
 
@@ -353,6 +356,7 @@ export class TradingDB {
                 realized_pnl: realizedPnl,
                 last_sell_price: lastSellMap.get(itemId)?.price ?? null,
                 last_sell_time: lastSellMap.get(itemId)?.time ?? null,
+                last_sell_quantity: lastSellMap.get(itemId)?.quantity ?? null,
                 trade_count: itemTrades.length,
                 sub_trades: subTrades,
             });

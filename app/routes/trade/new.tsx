@@ -195,6 +195,7 @@ export default function NewTradeRoute() {
     const selectedItem = selectedItemId != null ? items.find((it) => it.id === selectedItemId) : undefined;
     const selectedSymbol = String(selectedItem?.symbol || "").trim();
     const lastSellPrice = selectedItem?.last_sell_price ?? null;
+    const lastSellQty = selectedItem?.last_sell_quantity ?? null;
     const lastSellGap = (lastSellPrice !== null && current > 0)
         ? ((current - lastSellPrice) / lastSellPrice) * 100
         : null;
@@ -373,6 +374,9 @@ export default function NewTradeRoute() {
                     <div className={styles.lastSellRow}>
                         <span className={styles.lastSellLabel}>最近卖出价</span>
                         <span className={styles.lastSellPrice}>{lastSellPrice.toFixed(2)}</span>
+                        {lastSellQty !== null && (
+                            <span className={styles.lastSellQty}>仓位 {lastSellQty}</span>
+                        )}
                         {lastSellGap !== null && (
                             <span className={clsx(styles.lastSellGap, toneClass(lastSellGap >= 0 ? 'up' : 'down'))}>
                                 {formatPct(lastSellGap)}
