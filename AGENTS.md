@@ -35,7 +35,7 @@ app/
   common/                   layouts / components / hooks / theme / pwa / network（全局连通性状态）
   api/trading.ts            前端请求封装
   styles/                   tokens.less（CSS 变量·主题令牌）、variables.less（Less 变量·自动注入）、global.less
-  utils/                    calculations.ts 纯计算；datetime.ts 时间时区折算（UTC 存 / 本地展示 / 交易所对齐）
+  utils/                    calculations.ts 纯计算；datetime.ts 时间时区折算（UTC 存 / 本地展示 / 交易所对齐）；marketSession.ts 美股时段判断与北京时间展示
 workers/
   app.ts                    Worker 入口：/api 路由 + /api/health 自检 + 其余回退 index.html
   server/db/client.ts       TradingDB，交易域 D1 SQL 都在这里（行情蜡烛表的 SQL 在 services/stock/history/store.ts）
@@ -51,6 +51,8 @@ public/                     manifest.json、图标、_headers（缓存头）
 ## 关键约定
 
 样式一律 CSS Modules + Less，**不允许行内 `style={{}}`**（`rg 'style=\{\{' app` 应为空）。主题色只用 `app/styles/tokens.less` 里的 CSS 自定义属性；间距圆角用 `variables.less` 的 Less 变量（`@gap-*`、`@radius-*`、mixin `.safe-area-top()`），该文件由 vite 的 `additionalData` 自动注入，无需 `@import`。
+
+首页交易时段按美东时区判断、按北京时间显示，自动适配夏令时；周末显示休市，临时休市和交易所节假日不在本地判断范围内。
 
 涨跌配色按中国习惯：**涨=红（`--pnl-up`）、跌=绿（`--pnl-down`）**。
 
