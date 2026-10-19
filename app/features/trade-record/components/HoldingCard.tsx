@@ -16,7 +16,6 @@ import {
 import { historyPath } from '../../stock-chart/pages/HistoryPage';
 import { useSharedNow } from '../../../common/hooks/useSharedNow';
 import { formatLocalShort } from '../../../utils/datetime';
-import { TradingSessionIndicator } from './TradingSessionIndicator';
 import styles from './HoldingCard.module.less';
 
 const formatPrice = (val: number) => val.toFixed(2);
@@ -170,7 +169,6 @@ export function HoldingCard({ holding }: { holding: any }) {
 
     return (
         <div className={clsx(styles.card, alertClass)}>
-            <TradingSessionIndicator />
             <div className={styles.header}>
                 {/* 第一行只放标的名和现价：挤进笔数、时效等信息会让标的名被压没 */}
                 <div className={styles.headerMain}>

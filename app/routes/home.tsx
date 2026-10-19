@@ -7,6 +7,7 @@ import { SellModal } from "../features/trade-record/components/SellModal";
 import { EmptyState } from "../common/components/EmptyState";
 import { FloatingActionButton } from "../common/components/FloatingActionButton";
 import { ConnectionStatusIndicator } from "../common/network/ConnectionStatusBanner";
+import { TradingSessionIndicator } from "../features/trade-record/components/TradingSessionIndicator";
 import { fetchHoldings, sellByItem } from "../api/trading";
 import { readHoldingsCache, writeHoldingsCache } from "../features/trade-record/sessionCache";
 import styles from "./home.module.less";
@@ -106,6 +107,8 @@ export default function HomeRoute() {
 					<Percent size={18} />
 				</button>
 			</div>
+
+			<TradingSessionIndicator />
 
 			<div className={styles.scrollArea}>
 				<PullToRefresh

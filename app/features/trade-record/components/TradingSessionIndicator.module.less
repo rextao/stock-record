@@ -3,9 +3,9 @@
     align-items: center;
     gap: @gap-xs;
     width: 100%;
-    min-height: 28px;
+    min-height: 36px;
     margin-bottom: @gap-sm;
-    padding: 0;
+    padding: 0 @gap-lg;
     border: none;
     background: transparent;
     color: var(--text-secondary);
@@ -36,12 +36,6 @@
     color: var(--text-muted);
 }
 
-.beijingTime {
-    margin-left: auto;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-}
-
 .popupBody {
     border-top-left-radius: @radius-xl;
     border-top-right-radius: @radius-xl;
@@ -70,7 +64,6 @@
     margin-top: @gap-xs;
     color: var(--text-secondary);
     font-size: 12px;
-    font-variant-numeric: tabular-nums;
 }
 
 .closeButton {
@@ -93,6 +86,107 @@
     flex-direction: column;
     gap: @gap-xs;
 }
+
+.timeline {
+    padding: @gap-sm 0 @gap-md;
+}
+
+.timelineLabels {
+    position: relative;
+    height: 20px;
+    margin-bottom: @gap-xl;
+}
+
+.timelineLabel {
+    position: absolute;
+    top: 0;
+    width: 24%;
+    transform: translateX(-50%);
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.sessionLabel0 { left: 11.5%; }
+.sessionLabel1 { left: 36.5%; }
+.sessionLabel2 { left: 58.5%; }
+.sessionLabel3 { left: 83.5%; }
+
+.currentTimelineLabel {
+    color: var(--accent-purple);
+    font-weight: 600;
+}
+
+.timelineTrack {
+    position: relative;
+    height: 42px;
+    margin: 0 @gap-sm;
+}
+
+.timelineLine {
+    position: absolute;
+    top: 8px;
+    right: 0;
+    left: 0;
+    height: 2px;
+    border-radius: 2px;
+    background-color: var(--border);
+}
+
+.timelinePoint,
+.currentMarker {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+}
+
+.timelinePoint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+
+.timelineTick {
+    width: 8px;
+    height: 8px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    background-color: var(--popup-bg);
+}
+
+.timelineTime {
+    margin-top: @gap-sm;
+    white-space: nowrap;
+}
+
+.currentMarker {
+    z-index: 1;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--popup-bg);
+    border-radius: 50%;
+    background-color: var(--status-success);
+    box-shadow: 0 0 0 2px var(--status-success);
+}
+
+.generate-marker-positions(@i) when (@i <= 100) {
+    .markerPosition@{i} {
+        left: (@i * 1%);
+    }
+    .generate-marker-positions(@i + 1);
+}
+
+.generate-marker-positions(0);
+
+.pointPosition0 { left: 0; }
+.pointPosition23 { left: 23%; }
+.pointPosition50 { left: 50%; }
+.pointPosition67 { left: 67%; }
+.pointPosition100 { left: 100%; }
 
 .scheduleRow {
     display: flex;

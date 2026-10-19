@@ -23,14 +23,13 @@ export function TradingSessionIndicator() {
                 className={styles.indicator}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={openPopup}
-                aria-label={`当前交易时段：${market.label}，北京时间 ${market.beijingTime}，点击查看时段`}
+                aria-label={`当前交易时段：${market.label}，点击查看时段时间轴`}
             >
                 <Clock3 size={13} aria-hidden />
                 <span className={styles.indicatorLabel}>当前交易时段</span>
                 <span className={clsx(styles.indicatorValue, market.id === 'closed' && styles.closed)}>
                     {market.label}
                 </span>
-                <span className={styles.beijingTime}>北京时间 {market.beijingTime}</span>
                 <ChevronRight size={14} aria-hidden />
             </button>
 
@@ -44,9 +43,7 @@ export function TradingSessionIndicator() {
                     <div className={styles.popupHeader}>
                         <div>
                             <div className={styles.popupTitle}>美股交易时段</div>
-                            <div className={styles.popupSubtitle}>
-                                北京时间 · {market.beijingTime} · {market.label}
-                            </div>
+                            <div className={styles.popupSubtitle}>按北京时间标注 · {market.label}</div>
                         </div>
                         <button
                             type="button"
@@ -58,21 +55,40 @@ export function TradingSessionIndicator() {
                         </button>
                     </div>
 
-                    <div className={styles.scheduleList}>
-                        {market.schedule.map((session) => (
-                            <div
-                                key={session.id}
+                    <div className={styles.timeline}>
+                        <div className={styles.timelineLabels}>
+                            {market.schedule.map((session, index) => (
+                                <span
+                                    key={session.id}
+                                    className={clsx(
+                                        styles.timelineLabel,
+                                        styles[`sessionLabel${index}`],
+                                        session.id === market.id && styles.currentTimelineLabel,
+                                    )}
+                                >
+                                    {session.label}
+                                </span>
+                            ))}
+                        </div>
+                        <div className={styles.timelineTrack}>
+                            <span className={styles.timelineLine} aria-hidden />
+                            <span
                                 className={clsx(
-                                    styles.scheduleRow,
-                                    session.id === market.id && styles.currentSession,
+                                    styles.currentMarker,
+                                    styles[`markerPosition${Math.round(getTimelinePosition(market.beijingTime, market.isDaylightSaving))}`],
                                 )}
-                            >
-                                <span className={styles.sessionDot} aria-hidden />
-                                <span className={styles.sessionName}>{session.label}</span>
-                                <span className={styles.sessionTime}>{session.time}</span>
-                                {session.id === market.id && <span className={styles.currentTag}>当前</span>}
-                            </div>
-                        ))}
+                                aria-label={`当前时间位于${market.label}`}
+                            />
+                            {getTimelinePoints(market.isDaylightSaving).map((point) => (
+                                <span
+                                    key={point.time}
+                                    className={clsx(styles.timelinePoint, styles[`pointPosition${point.position}`])}
+                                >
+                                    <span className={styles.timelineTick} aria-hidden />
+                                    <span className={styles.timelineTime}>{point.time}</span>
+                                </span>
+                            ))}
+                        </div>
                     </div>
 
                     {market.id === 'closed' && <div className={styles.closedHint}>当前为周末休市，夜盘将在开市后恢复。</div>}
@@ -83,4 +99,19 @@ export function TradingSessionIndicator() {
             </Popup>
         </>
     );
+}
+
+type TimelinePoint = { time: string; position: number };
+
+function getTimelinePoints(isDaylightSaving: boolean): TimelinePoint[] {
+    const times = isDaylightSaving ? ['16:00', '21:30', '04:00', '08:00', '16:00'] : ['17:00', '22:30', '05:00', '09:00', '17:00'];
+    return times.map((time, index) => ({ time, position: [0, 23, 50, 67, 100][index] }));
+}
+
+function getTimelinePosition(beijingTime: string, isDaylightSaving: boolean): number {
+    const [hour, minute] = beijingTime.split(':').map(Number);
+    const current = hour * 60 + minute;
+    const start = isDaylightSaving ? 16 * 60 : 17 * 60;
+    const elapsed = (current - start + 24 * 60) % (24 * 60);
+    return (elapsed / (24 * 60)) * 100;
 }
