@@ -43,7 +43,7 @@ export function TradingSessionIndicator() {
                     <div className={styles.popupHeader}>
                         <div>
                             <div className={styles.popupTitle}>美股交易时段</div>
-                            <div className={styles.popupSubtitle}>按北京时间标注 · {market.label}</div>
+                            <div className={styles.popupSubtitle}>{market.label}</div>
                         </div>
                         <button
                             type="button"
