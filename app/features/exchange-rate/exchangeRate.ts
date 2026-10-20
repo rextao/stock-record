@@ -37,7 +37,7 @@ export function readExchangeRateSettings(): ExchangeRateSettings {
             : []
         const snapshot = value.snapshot
         return {
-            amounts: amounts.length ? amounts : DEFAULT_AMOUNTS,
+            amounts: Array.isArray(value.amounts) ? amounts : DEFAULT_AMOUNTS,
             snapshot:
                 snapshot && Number.isFinite(Number(snapshot.rate)) && Number(snapshot.rate) > 0 && typeof snapshot.fetchedDate === 'string'
                     ? { rate: Number(snapshot.rate), fetchedDate: snapshot.fetchedDate }

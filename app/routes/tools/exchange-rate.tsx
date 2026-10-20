@@ -15,6 +15,7 @@ import styles from './exchange-rate.module.less'
 export default function ExchangeRateRoute() {
     const navigate = useNavigate()
     const [settings, setSettings] = useState<ExchangeRateSettings>(() => readExchangeRateSettings())
+    const [inputValues, setInputValues] = useState<string[]>(() => readExchangeRateSettings().amounts.map(String))
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
     useEffect(() => {
@@ -29,37 +30,46 @@ export default function ExchangeRateRoute() {
         }
     }, [])
 
-    const updateAmounts = (amounts: number[]) => {
+    const updateAmounts = (amounts: number[], nextInputValues = amounts.map(String)) => {
         const next = { ...settings, amounts }
         setSettings(next)
+        setInputValues(nextInputValues)
         writeExchangeRateSettings(next)
     }
 
     const inputDigit = (char: string) => {
         if (selectedIndex == null) return
-        const current = String(settings.amounts[selectedIndex] ?? '')
+        const current = inputValues[selectedIndex] ?? ''
         const nextValue = current === '0' ? char : `${current}${char}`
         const amount = Number(nextValue)
         if (!Number.isFinite(amount) || amount <= 0 || amount > 999999999999) return
-        updateAmounts(settings.amounts.map((value, index) => (index === selectedIndex ? amount : value)))
+        setInputValues((values) => values.map((value, index) => (index === selectedIndex ? nextValue : value)))
     }
 
     const backspace = () => {
         if (selectedIndex == null) return
-        const current = String(settings.amounts[selectedIndex] ?? '')
+        const current = inputValues[selectedIndex] ?? ''
         const next = current.slice(0, -1)
-        if (!next) return
-        updateAmounts(settings.amounts.map((value, index) => (index === selectedIndex ? Number(next) : value)))
+        setInputValues((values) => values.map((value, index) => (index === selectedIndex ? next : value)))
+    }
+
+    const commitInputs = () => {
+        const amounts = inputValues
+            .map(Number)
+            .filter((amount) => Number.isFinite(amount) && amount > 0)
+            .slice(0, MAX_EXCHANGE_AMOUNTS)
+        updateAmounts(amounts, amounts.map(String))
+        setSelectedIndex(null)
     }
 
     const addAmount = () => {
         if (settings.amounts.length >= MAX_EXCHANGE_AMOUNTS) return
-        updateAmounts([...settings.amounts, 10000])
+        updateAmounts([...settings.amounts, 10000], [...inputValues, '10000'])
     }
 
     const removeAmount = (index: number) => {
         const next = settings.amounts.filter((_, itemIndex) => itemIndex !== index)
-        updateAmounts(next)
+        updateAmounts(next, inputValues.filter((_, itemIndex) => itemIndex !== index))
         setSelectedIndex(null)
     }
 
@@ -69,8 +79,8 @@ export default function ExchangeRateRoute() {
             <div className={styles.content}>
                 <div className={styles.sectionTitle}>首页显示金额</div>
                 <div className={styles.card}>
-                    {settings.amounts.map((amount, index) => (
-                        <div className={styles.amountRow} key={`${index}-${amount}`}>
+                    {inputValues.map((value, index) => (
+                        <div className={styles.amountRow} key={index}>
                             <button
                                 type="button"
                                 className={styles.amountButton}
@@ -78,7 +88,8 @@ export default function ExchangeRateRoute() {
                                 onClick={() => setSelectedIndex(index)}
                             >
                                 <span className={styles.amountIndex}>{index + 1}</span>
-                                <span className={styles.amountValue}>{amount} 元</span>
+                                <span className={styles.currencySymbol}>¥</span>
+                                <span className={styles.amountValue}>{value}</span>
                             </button>
                             <button type="button" className={styles.deleteButton} onClick={() => removeAmount(index)} aria-label={`删除第${index + 1}条金额`}>
                                 <Trash2 size={18} />
@@ -101,7 +112,7 @@ export default function ExchangeRateRoute() {
                 onBackspace={backspace}
                 onPrev={() => setSelectedIndex((index) => (index == null ? null : Math.max(0, index - 1)))}
                 onNext={() => setSelectedIndex((index) => (index == null ? null : Math.min(settings.amounts.length - 1, index + 1)))}
-                onDone={() => setSelectedIndex(null)}
+                onDone={commitInputs}
             />
         </div>
     )
