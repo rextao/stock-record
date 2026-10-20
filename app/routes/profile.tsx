@@ -18,8 +18,8 @@ export default function MineRoute() {
 
     return (
         <div className={styles.page}>
-            <ExchangeRateWidget />
             <h2 className={styles.title}>我的</h2>
+            <ExchangeRateWidget />
 
             <div className={styles.groupTitle}>数据管理</div>
 
