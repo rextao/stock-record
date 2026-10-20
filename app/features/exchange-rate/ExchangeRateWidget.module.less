@@ -1,0 +1,25 @@
+.widget {
+    width: calc(100% - 2 * @gap-lg);
+    margin: 0 @gap-lg @gap-sm;
+    padding: @gap-md @gap-lg;
+    border: 1px solid var(--border);
+    border-radius: @radius-xl;
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    text-align: left;
+}
+
+.header, .row, .rateHint, .errorHint {
+    display: flex;
+    align-items: center;
+}
+
+.header { justify-content: space-between; gap: @gap-md; }
+.title { font-size: 15px; font-weight: 600; }
+.rateHint { gap: @gap-xs; color: var(--text-muted); font-size: 11px; }
+.rows { margin-top: @gap-sm; display: flex; flex-direction: column; gap: @gap-xs; }
+.row { gap: @gap-sm; font-variant-numeric: tabular-nums; }
+.rmb { width: 45%; color: var(--text-secondary); }
+.equals { color: var(--text-muted); }
+.usd { flex: 1; color: var(--text-primary); font-weight: 600; text-align: right; }
+.errorHint { gap: @gap-xs; margin-top: @gap-sm; color: var(--text-muted); font-size: 11px; }

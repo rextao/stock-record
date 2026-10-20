@@ -31,7 +31,7 @@ app/
   root.tsx                  HTML 外壳、主题引导脚本、SW 注册脚本（生产环境内联在 <head>）
   routes.ts                 路由表；BasicLayout 内的页面有 TabBar，外面的没有
   routes/                   页面，每个页面一个同名 .module.less
-  features/                 业务模块（trade-record、stock-chart）：组件、类型；trade-record/sessionCache.ts 是会话内 SWR 缓存，走势页组件在 stock-chart/pages
+  features/                 业务模块（trade-record、stock-chart、exchange-rate）：组件、类型；trade-record/sessionCache.ts 是会话内 SWR 缓存，走势页组件在 stock-chart/pages
   common/                   layouts / components / hooks / theme / pwa / network（全局连通性状态）
   api/trading.ts            前端请求封装
   styles/                   tokens.less（CSS 变量·主题令牌）、variables.less（Less 变量·自动注入）、global.less

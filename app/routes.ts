@@ -17,6 +17,7 @@ export default [
 
     // 独立小工具：纯本地计算，不依赖任何接口
     route("tools/price-change", "routes/tools/price-change.tsx"),
+    route("tools/exchange-rate", "routes/tools/exchange-rate.tsx"),
 
     // 新增：持仓详情与单笔交易详情
     route("holdings/:id", "routes/holdings/detail.tsx"),

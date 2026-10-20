@@ -1,6 +1,6 @@
 import { List, Selector } from 'antd-mobile'
 import { useNavigate } from 'react-router'
-import { ListTree, ChevronRight, Percent } from 'lucide-react'
+import { ListTree, ChevronRight, Percent, Banknote } from 'lucide-react'
 import { useThemeStore, type ThemeMode } from '~/common/theme/themeStore'
 import styles from './profile.module.less'
 
@@ -50,6 +50,14 @@ export default function MineRoute() {
                     arrowIcon={<ChevronRight size={18} />}
                 >
                     <span className={styles.itemLabel}>涨跌幅计算</span>
+                </List.Item>
+                <List.Item
+                    prefix={<div className={styles.iconBox}><Banknote size={18} /></div>}
+                    onClick={() => navigate('/tools/exchange-rate')}
+                    className={styles.listItem}
+                    arrowIcon={<ChevronRight size={18} />}
+                >
+                    <span className={styles.itemLabel}>汇率换算</span>
                 </List.Item>
             </List>
 

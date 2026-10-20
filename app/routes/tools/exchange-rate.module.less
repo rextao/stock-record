@@ -1,0 +1,13 @@
+.page { min-height: 100%; background-color: var(--app-bg); }
+.navBar { --adm-nav-bar-background: var(--app-bg); --adm-nav-bar-color: var(--text-primary); }
+.content { padding: @gap-lg @gap-lg calc(@gap-xl + @safe-bottom); }
+.sectionTitle { margin: @gap-md @gap-sm @gap-sm; color: var(--text-muted); font-size: 14px; }
+.card { overflow: hidden; border: 1px solid var(--border); border-radius: @radius-xl; background-color: var(--card-bg); }
+.amountRow { display: flex; align-items: center; border-bottom: 1px solid var(--border); }
+.amountButton { flex: 1; display: flex; align-items: center; gap: @gap-md; min-width: 0; padding: @gap-lg; border: 0; background: transparent; color: var(--text-primary); text-align: left; }
+.amountIndex { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft-strong); color: var(--accent-purple); font-size: 12px; }
+.amountValue { font-size: 16px; font-variant-numeric: tabular-nums; }
+.deleteButton { display: inline-flex; align-items: center; justify-content: center; margin-right: @gap-md; padding: @gap-sm; border: 0; background: transparent; color: var(--text-muted); }
+.addButton { display: flex; align-items: center; justify-content: center; gap: @gap-xs; width: 100%; padding: @gap-lg; border: 0; background: transparent; color: var(--accent-purple); font-size: 15px; }
+.addButton:disabled { color: var(--text-muted); }
+.hint { margin: @gap-md @gap-sm; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
