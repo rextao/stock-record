@@ -63,13 +63,18 @@ export default function ExchangeRateRoute() {
     }
 
     const addAmount = () => {
-        if (settings.amounts.length >= MAX_EXCHANGE_AMOUNTS) return
-        updateAmounts([...settings.amounts, 10000], [...inputValues, '10000'])
+        if (inputValues.length >= MAX_EXCHANGE_AMOUNTS) return
+        setInputValues((values) => [...values, ''])
     }
 
     const removeAmount = (index: number) => {
-        const next = settings.amounts.filter((_, itemIndex) => itemIndex !== index)
-        updateAmounts(next, inputValues.filter((_, itemIndex) => itemIndex !== index))
+        const nextInputValues = inputValues.filter((_, itemIndex) => itemIndex !== index)
+        const nextAmounts = nextInputValues
+            .map(Number)
+            .filter((amount) => Number.isFinite(amount) && amount > 0)
+            .slice(0, MAX_EXCHANGE_AMOUNTS)
+        setInputValues(nextInputValues)
+        updateAmounts(nextAmounts)
         setSelectedIndex(null)
     }
 
@@ -96,9 +101,9 @@ export default function ExchangeRateRoute() {
                             </button>
                         </div>
                     ))}
-                    <button type="button" className={styles.addButton} onClick={addAmount} disabled={settings.amounts.length >= MAX_EXCHANGE_AMOUNTS}>
+                    <button type="button" className={styles.addButton} onClick={addAmount} disabled={inputValues.length >= MAX_EXCHANGE_AMOUNTS}>
                         <Plus size={18} />
-                        {settings.amounts.length >= MAX_EXCHANGE_AMOUNTS ? '最多添加5条' : '新增金额'}
+                        {inputValues.length >= MAX_EXCHANGE_AMOUNTS ? '最多添加5条' : '新增金额'}
                     </button>
                 </div>
                 <div className={styles.hint}>点击金额后使用数字键盘修改，首页会按当前配置显示。</div>

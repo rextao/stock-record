@@ -12,7 +12,7 @@ export type ExchangeRateSettings = {
     lastAttemptDate: string | null
 }
 
-const DEFAULT_AMOUNTS = [10000]
+const DEFAULT_AMOUNTS: number[] = []
 
 export function getTodayKey(date = new Date()): string {
     return new Intl.DateTimeFormat('en-CA', {
