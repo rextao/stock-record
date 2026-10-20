@@ -2,6 +2,7 @@ import { List, Selector } from 'antd-mobile'
 import { useNavigate } from 'react-router'
 import { ListTree, ChevronRight, Percent, Banknote } from 'lucide-react'
 import { useThemeStore, type ThemeMode } from '~/common/theme/themeStore'
+import ExchangeRateWidget from '~/features/exchange-rate/ExchangeRateWidget'
 import styles from './profile.module.less'
 
 const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
@@ -17,6 +18,7 @@ export default function MineRoute() {
 
     return (
         <div className={styles.page}>
+            <ExchangeRateWidget />
             <h2 className={styles.title}>我的</h2>
 
             <div className={styles.groupTitle}>数据管理</div>

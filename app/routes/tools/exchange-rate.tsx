@@ -5,7 +5,6 @@ import { Plus, Trash2 } from 'lucide-react'
 import NumericKeypad from '~/common/components/NumericKeypad'
 import {
     fetchDailyExchangeRate,
-    formatRmbAmount,
     readExchangeRateSettings,
     writeExchangeRateSettings,
     MAX_EXCHANGE_AMOUNTS,
@@ -79,7 +78,7 @@ export default function ExchangeRateRoute() {
                                 onClick={() => setSelectedIndex(index)}
                             >
                                 <span className={styles.amountIndex}>{index + 1}</span>
-                                <span className={styles.amountValue}>{formatRmbAmount(amount)} 元</span>
+                                <span className={styles.amountValue}>{amount} 元</span>
                             </button>
                             <button type="button" className={styles.deleteButton} onClick={() => removeAmount(index)} aria-label={`删除第${index + 1}条金额`}>
                                 <Trash2 size={18} />

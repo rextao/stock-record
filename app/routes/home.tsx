@@ -8,7 +8,6 @@ import { EmptyState } from "../common/components/EmptyState";
 import { FloatingActionButton } from "../common/components/FloatingActionButton";
 import { ConnectionStatusIndicator } from "../common/network/ConnectionStatusBanner";
 import { TradingSessionIndicator } from "../features/trade-record/components/TradingSessionIndicator";
-import ExchangeRateWidget from "../features/exchange-rate/ExchangeRateWidget";
 import { fetchHoldings, sellByItem } from "../api/trading";
 import { readHoldingsCache, writeHoldingsCache } from "../features/trade-record/sessionCache";
 import styles from "./home.module.less";
@@ -109,7 +108,6 @@ export default function HomeRoute() {
 				</button>
 			</div>
 
-			<ExchangeRateWidget />
 			<TradingSessionIndicator />
 
 			<div className={styles.scrollArea}>
