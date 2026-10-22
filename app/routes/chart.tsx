@@ -74,7 +74,7 @@ export default function ChartRoute() {
     );
 
     // 日期区间只作用于「资产分析」的收益折线图；「盈亏分析」恒取全部时间。
-    const [rangeKey, setRangeKey] = useState<ChartRangeKey>('all');
+    const [rangeKey, setRangeKey] = useState<ChartRangeKey>('threeMonths');
     const [customStart, setCustomStart] = useState(CHART_ALL_START);
     const [customEnd, setCustomEnd] = useState(todayDate());
     const [calendarVisible, setCalendarVisible] = useState(false);
@@ -121,9 +121,14 @@ export default function ChartRoute() {
     // 逐个补现价：优先用会话缓存里够新的价（首页卡片刚拉过就直接命中），否则后台拉一次。
     // 复用首页那套报价缓存与新鲜度阈值，缺价的持仓浮盈按 0 计，单个失败静默、不影响其余。
     useEffect(() => {
-        if (holdings.length === 0) return;
+        if (holdings.length === 0 && trades.length === 0) return;
         const controller = new AbortController();
-        const symbols = Array.from(new Set(holdings.map((h) => symbolKey(h.item_symbol)).filter(Boolean)));
+        const symbols = Array.from(
+            new Set([
+                ...holdings.map((h) => symbolKey(h.item_symbol)),
+                ...trades.map((t) => symbolKey(t.item_symbol)),
+            ].filter(Boolean)),
+        );
 
         const seeded: Record<string, number> = {};
         for (const sym of symbols) {
@@ -152,7 +157,7 @@ export default function ChartRoute() {
                 });
         }
         return () => controller.abort();
-    }, [holdings]);
+    }, [holdings, trades]);
 
     // 计算当前选中的日期边界（仅资产分析用）
     const bounds = useMemo(
@@ -169,7 +174,15 @@ export default function ChartRoute() {
         let losing = 0;
         const rankingMap = new Map<
             number,
-            { id: number; name: string; profit: number; lastSellPrice: number; lastSellTime: string; lastSellId: number }
+            {
+                id: number;
+                name: string;
+                symbol: string;
+                profit: number;
+                lastSellPrice: number;
+                lastSellTime: string;
+                lastSellId: number;
+            }
         >();
 
         for (const t of trades) {
@@ -193,6 +206,7 @@ export default function ChartRoute() {
                     rankingMap.set(t.item_id, {
                         id: t.item_id,
                         name: t.item_name,
+                        symbol: t.item_symbol || '',
                         profit,
                         lastSellPrice: rec.sell_price,
                         lastSellTime: rec.sell_time,
@@ -358,20 +372,31 @@ export default function ChartRoute() {
                         {/* 盈亏排行 */}
                         <div className={styles.rankCard}>
                             <div className={styles.rankTitle}>盈亏排行</div>
+                            <div className={styles.rankHeader}>
+                                <span>代码</span>
+                                <span>最近卖出价</span>
+                                <span>盈利</span>
+                            </div>
                             {overall.ranking.length === 0 ? (
                                 <div className={styles.rankEmpty}>暂无卖出记录</div>
                             ) : (
                                 overall.ranking.map((row) => (
                                     <div key={row.id} className={styles.rankRow}>
-                                        <span className={styles.rankName}>{row.name}</span>
-                                        <div className={styles.rankRight}>
-                                            <span className={styles.rankLastSell}>
-                                                最近卖出 {row.lastSellPrice.toFixed(2)}
-                                            </span>
-                                            <span className={clsx(styles.rankValue, pnlClass(row.profit))}>
-                                                {signed(row.profit)}
-                                            </span>
+                                        <span className={styles.rankName}>{row.symbol || row.name}</span>
+                                        <div className={styles.rankLastSell}>
+                                            <span>{row.lastSellPrice.toFixed(2)}</span>
+                                            {(() => {
+                                                const currentPrice = quotePrices[symbolKey(row.symbol)];
+                                                if (currentPrice == null || row.lastSellPrice <= 0) return <span>--</span>;
+                                                const pct = ((currentPrice - row.lastSellPrice) / row.lastSellPrice) * 100;
+                                                return (
+                                                    <span className={styles.rankSellPct}>
+                                                        {pct > 0 ? 'No' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
+                                                    </span>
+                                                );
+                                            })()}
                                         </div>
+                                        <span className={clsx(styles.rankValue, pnlClass(row.profit))}>{signed(row.profit)}</span>
                                     </div>
                                 ))
                             )}

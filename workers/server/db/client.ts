@@ -32,7 +32,7 @@ export class TradingDB {
         return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
     }
 
-    private enrichTrade(trade: Trade, itemName: string): TradeWithItem {
+    private enrichTrade(trade: Trade, itemName: string, itemSymbol: string | null = null): TradeWithItem {
         const totalSoldPct =
             trade.actual_price !== null && trade.current_price
                 ? ((trade.actual_price - trade.current_price) / trade.current_price) * 100
@@ -40,6 +40,7 @@ export class TradingDB {
         return {
             ...trade,
             item_name: itemName,
+            item_symbol: itemSymbol,
             upside_pct: calcUpsidePct(trade.current_price, trade.target_price),
             downside_pct: calcDownsidePct(trade.current_price, trade.stop_loss_price),
             actual_return_pct: totalSoldPct,
@@ -181,11 +182,11 @@ export class TradingDB {
     async getAllTrades(): Promise<TradeWithItem[]> {
         // 1. 联合查询获取所有 trades 及其对应的 item_name
         const { results: tradesRows } = await this.db.prepare(`
-        SELECT t.*, i.name as item_name 
+        SELECT t.*, i.name as item_name, i.symbol as item_symbol
         FROM trades t 
         LEFT JOIN items i ON t.item_id = i.id 
         ORDER BY t.buy_time DESC
-    `).all<Trade & { item_name: string }>();
+        `).all<Trade & { item_name: string; item_symbol: string | null }>();
 
         // 2. 获取所有的卖出记录
         const { results: allRecords } = await this.db.prepare(
@@ -204,7 +205,7 @@ export class TradingDB {
         // 4. 组装最终的数据结构
         return tradesRows.map((t) => {
             // 这里复用了类中已有的 enrichTrade 和 calcProfit 方法
-            const enriched = this.enrichTrade(t, t.item_name || '');
+            const enriched = this.enrichTrade(t, t.item_name || '', t.item_symbol || null);
             const recs = recordsMap.get(t.id) || [];
 
             enriched.sell_records = recs;

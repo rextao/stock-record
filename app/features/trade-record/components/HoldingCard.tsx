@@ -106,7 +106,9 @@ export function HoldingCard({ holding }: { holding: any }) {
     const lastSellPrice = typeof holding.last_sell_price === 'number' ? holding.last_sell_price : null;
     const lastSellQty = typeof holding.last_sell_quantity === 'number' ? holding.last_sell_quantity : null;
     const lastSellPct =
-        lastSellPrice != null && hasPrice ? (((quote.price as number) - lastSellPrice) / lastSellPrice) * 100 : null;
+        lastSellPrice != null && lastSellPrice > 0 && hasPrice
+            ? (((quote.price as number) - lastSellPrice) / lastSellPrice) * 100
+            : null;
 
     // 挂载时按需补价：/api/holdings 只回结构，报价由每张卡片各自拉。
     // 有缓存且够新（≤5 分钟，与标黄阈值一致）就直接用、不打网；否则后台拉一次
@@ -248,9 +250,8 @@ export function HoldingCard({ holding }: { holding: any }) {
                             <span className={styles.lastSellQty}>仓位 {lastSellQty}</span>
                         )}
                         {lastSellPct != null && (
-                            <span className={clsx(styles.lastSellPct, pnlClass(lastSellPct))}>
-                                {lastSellPct >= 0 ? '+' : ''}
-                                {lastSellPct.toFixed(2)}%
+                            <span className={styles.lastSellPct}>
+                                {lastSellPct > 0 ? 'No' : `${lastSellPct >= 0 ? '+' : ''}${lastSellPct.toFixed(2)}%`}
                             </span>
                         )}
                     </div>

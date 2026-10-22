@@ -47,7 +47,8 @@ export interface SellRecord {
 }
 
 export interface TradeWithItem extends Trade {
-	item_name: string;
+  item_name: string;
+  item_symbol: string | null;
 	upside_pct: number;
 	downside_pct: number;
 	actual_return_pct: number | null;

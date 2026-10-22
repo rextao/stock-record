@@ -5,6 +5,8 @@ export type ChartRangeKey =
   | 'lastMonth'
   | 'week'
   | 'lastWeek'
+  | 'threeMonths'
+  | 'sixMonths'
   | 'custom'
 
 export const CHART_RANGE_OPTIONS: { key: ChartRangeKey; label: string }[] = [
@@ -14,6 +16,8 @@ export const CHART_RANGE_OPTIONS: { key: ChartRangeKey; label: string }[] = [
   { key: 'lastMonth', label: '上月' },
   { key: 'week', label: '本周' },
   { key: 'lastWeek', label: '上周' },
+  { key: 'threeMonths', label: '近3个月' },
+  { key: 'sixMonths', label: '近6个月' },
   { key: 'custom', label: '日期选择' },
 ]
 
@@ -98,6 +102,14 @@ export function getChartRangeBounds(
     const start = new Date(thisWeek.getFullYear(), thisWeek.getMonth(), thisWeek.getDate() - 7)
     const end = new Date(thisWeek.getFullYear(), thisWeek.getMonth(), thisWeek.getDate() - 1, 23, 59, 59)
     return { start: `${formatDate(start)} 00:00:00`, end: `${formatDate(end)} 23:59:59` }
+  }
+  if (key === 'threeMonths' || key === 'sixMonths') {
+    const months = key === 'threeMonths' ? 3 : 6
+    const start = new Date(y, m - months, now.getDate())
+    return {
+      start: `${formatDate(start)} 00:00:00`,
+      end: `${todayDate()} 23:59:59`,
+    }
   }
   const start = customStart || CHART_ALL_START
   const end = customEnd || todayDate()
