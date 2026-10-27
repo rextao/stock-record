@@ -80,7 +80,8 @@ export function getMarketValuationService() {
     return {
         getValuation(): Promise<MarketValuation> {
             return cache.wrap(
-                ['forward-pe', 'v1'],
+                // 数据集从两条扩展到包含 SOXX，升级 key 以甩掉旧缓存。
+                ['forward-pe', 'v2'],
                 { ttlSeconds: CACHE_TTL_SECONDS, shouldCache: (value) => value.series.every((series) => series.points.length > 0) },
                 async () => {
                     const series = await Promise.all(MARKETS.map(fetchMarket))
