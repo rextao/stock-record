@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { SpinLoading, Toast } from 'antd-mobile'
 import { RefreshCw } from 'lucide-react'
 import { fetchMarketValuation } from '~/api/marketValuation'
@@ -7,6 +8,7 @@ import type { MarketValuation } from '~/features/market-valuation/types'
 import styles from './valuation.module.less'
 
 export default function ValuationRoute() {
+    const navigate = useNavigate()
     const [data, setData] = useState<MarketValuation | null>(null)
     const [loading, setLoading] = useState(true)
 
@@ -39,18 +41,21 @@ export default function ValuationRoute() {
                 <div className={styles.loading}><SpinLoading color="currentColor" />加载估值数据</div>
             ) : data ? (
                 <div className={styles.content}>
-                    <div className={styles.valueGrid}>
-                        {data.series.map((item) => (
-                            <div className={styles.valueCard} key={item.id}>
-                                <span className={styles.valueName}>{item.name}</span>
-                                <strong className={styles.value}>{item.current == null ? '--' : `${item.current.toFixed(1)}x`}</strong>
+                    {data.series.map((item) => (
+                        <section className={styles.valuationCard} key={item.id}>
+                            <div className={styles.cardHeader}>
+                                <div>
+                                    <h2 className={styles.cardTitle}>{item.name}前瞻市盈率</h2>
+                                    <strong className={styles.value}>{item.current == null ? '--' : `${item.current.toFixed(1)}倍`}</strong>
+                                </div>
                                 <span className={styles.valueDate}>更新于 {item.updated}</span>
                             </div>
-                        ))}
-                    </div>
-                    <div className={styles.chartCard}>
-                        <ValuationCurveChart series={data.series} />
-                    </div>
+                            <ValuationCurveChart series={item} />
+                            <button type="button" className={styles.historyButton} onClick={() => navigate(`/valuation/${item.id}`)}>
+                                查看历史数据
+                            </button>
+                        </section>
+                    ))}
                     <div className={styles.note}>前向市盈率为未来12个月一致预期口径，数据按周更新。</div>
                     <a className={styles.source} href="https://historyofmarket.com/" target="_blank" rel="noreferrer">
                         数据来源：History of Market

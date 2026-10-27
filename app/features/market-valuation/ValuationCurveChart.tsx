@@ -1,70 +1,114 @@
 import { useMemo } from 'react'
 import { readToken, useThemeStore } from '~/common/theme/themeStore'
-import type { MarketValuationSeries } from './types'
+import type { MarketValuationSeries, ValuationPoint } from './types'
 import styles from './ValuationCurveChart.module.less'
 
-type Props = { series: MarketValuationSeries[] }
+type Props = {
+    series: MarketValuationSeries
+    rangeYears?: number | null
+}
 
 const WIDTH = 720
 const HEIGHT = 300
-const PAD = { top: 18, right: 16, bottom: 30, left: 42 }
+const PAD = { top: 18, right: 16, bottom: 30, left: 58 }
+
+function dateValue(date: string) {
+    return Date.parse(`${date}T00:00:00Z`)
+}
+
+function shortDate(date: string) {
+    return date.slice(0, 4)
+}
+
+function formatMultiple(value: number) {
+    return `${value.toFixed(1)}倍`
+}
+
+function formatStat(value: number) {
+    return `${value.toFixed(2)}倍`
+}
 
 function pathFor(points: Array<{ x: number; y: number }>) {
     return points.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ')
 }
 
-function shortDate(date: string) {
-    const [year, month] = date.split('-')
-    return `${year.slice(2)}.${month}`
-}
-
-export default function ValuationCurveChart({ series }: Props) {
+export default function ValuationCurveChart({ series, rangeYears = 10 }: Props) {
     const resolvedTheme = useThemeStore((state) => state.resolved)
     const chart = useMemo(() => {
-        const allPoints = series.flatMap((item) => item.points)
-        const max = Math.max(...allPoints.map((point) => point.value), 1)
-        const min = 0
-        const xAt = (index: number, length: number) => PAD.left + (index / Math.max(length - 1, 1)) * (WIDTH - PAD.left - PAD.right)
-        const yAt = (value: number) => PAD.top + ((max - value) / (max - min || 1)) * (HEIGHT - PAD.top - PAD.bottom)
+        const latestDate = series.points[series.points.length - 1]?.date || series.updated
+        const cutoff = rangeYears == null ? Number.NEGATIVE_INFINITY : dateValue(latestDate) - rangeYears * 365.25 * 86_400_000
+        const points = series.points.filter((point) => dateValue(point.date) >= cutoff)
+        const values = points.map((point) => point.value)
+        const current = series.current ?? values[values.length - 1] ?? 0
+        const average = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : current
+        const variance = values.length
+            ? values.reduce((sum, value) => sum + (value - average) ** 2, 0) / values.length
+            : 0
+        const deviation = Math.sqrt(variance)
+        const lower = Math.max(0, average - deviation)
+        const upper = average + deviation
+        const valuesWithBounds = [...values, current, lower, upper]
+        const minValue = Math.max(0, Math.min(...valuesWithBounds) - Math.max(deviation * 0.15, 1))
+        const maxValue = Math.max(...valuesWithBounds) + Math.max(deviation * 0.15, 1)
+        const xStart = points[0]?.date || series.updated
+        const xEnd = series.currentDate || latestDate
+        const startTime = dateValue(xStart)
+        const endTime = Math.max(dateValue(xEnd), dateValue(xStart) + 1)
+        const xAt = (point: ValuationPoint) => PAD.left + ((dateValue(point.date) - startTime) / (endTime - startTime)) * (WIDTH - PAD.left - PAD.right)
+        const yAt = (value: number) => PAD.top + ((maxValue - value) / (maxValue - minValue || 1)) * (HEIGHT - PAD.top - PAD.bottom)
+        const linePoints = points.map((point) => ({ x: xAt(point), y: yAt(point.value) }))
+        const bandTop = yAt(upper)
+        const bandBottom = yAt(lower)
+
         return {
-            max,
-            lines: series.map((item) => ({
-                ...item,
-                path: pathFor(item.points.map((point, index) => ({ x: xAt(index, item.points.length), y: yAt(point.value) }))),
-            })),
-            labels: [series[0]?.points[0]?.date, series[0]?.points[series[0].points.length - 1]?.date].filter(Boolean).map(shortDate),
+            points,
+            current,
+            average,
+            lower,
+            upper,
+            min: Math.min(...values, current),
+            max: Math.max(...values, current),
+            path: pathFor(linePoints),
+            currentY: yAt(current),
+            bandTop,
+            bandBottom,
+            xStart,
+            xEnd,
         }
-    }, [series])
+    }, [series, rangeYears])
 
     const gridColor = readToken('--chart-grid')
     const mutedColor = readToken('--chart-muted')
 
     return (
         <div className={styles.wrapper} data-theme={resolvedTheme}>
-            <div className={styles.header}>
-                <span className={styles.title}>前向市盈率</span>
-                <div className={styles.legend}>
-                    {series.map((item, index) => (
-                        <span className={styles.legendItem} key={item.id}>
-                            <span className={index === 0 ? styles.ndxDot : styles.sp500Dot} />
-                            {item.name}
-                        </span>
-                    ))}
-                </div>
-            </div>
-            <svg className={styles.canvas} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label="纳斯达克100与标普500前向市盈率曲线">
+            <div className={styles.chartMeta}>时间范围：近{rangeYears == null ? '全部' : `${rangeYears}年`}</div>
+            <svg className={styles.canvas} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={`${series.name}前向市盈率曲线`}>
+                <rect
+                    className={styles.deviationBand}
+                    x={PAD.left}
+                    y={chart.bandTop}
+                    width={WIDTH - PAD.left - PAD.right}
+                    height={Math.max(0, chart.bandBottom - chart.bandTop)}
+                />
                 {[0, 0.5, 1].map((ratio) => {
                     const y = PAD.top + ratio * (HEIGHT - PAD.top - PAD.bottom)
                     return <line key={ratio} x1={PAD.left} x2={WIDTH - PAD.right} y1={y} y2={y} stroke={gridColor} />
                 })}
-                <text x={PAD.left - 8} y={PAD.top + 4} textAnchor="end" fill={mutedColor}>{chart.max.toFixed(0)}x</text>
-                <text x={PAD.left - 8} y={HEIGHT - PAD.bottom + 4} textAnchor="end" fill={mutedColor}>0x</text>
-                {chart.lines.map((line, index) => (
-                    <path key={line.id} d={line.path} className={index === 0 ? styles.ndxLine : styles.sp500Line} />
-                ))}
-                <text x={PAD.left} y={HEIGHT - 8} fill={mutedColor}>{chart.labels[0]}</text>
-                <text x={WIDTH - PAD.right} y={HEIGHT - 8} textAnchor="end" fill={mutedColor}>{chart.labels[1]}</text>
+                <line className={styles.todayLine} x1={PAD.left} x2={WIDTH - PAD.right} y1={chart.currentY} y2={chart.currentY} />
+                <path className={styles.valueLine} d={chart.path} />
+                <text className={styles.axisLabel} x={PAD.left - 8} y={chart.bandTop + 4} textAnchor="end" fill={mutedColor}>{formatMultiple(chart.upper)}</text>
+                <text className={styles.axisLabel} x={PAD.left - 8} y={chart.bandBottom + 4} textAnchor="end" fill={mutedColor}>{formatMultiple(chart.lower)}</text>
+                <text className={styles.todayLabel} x={WIDTH - PAD.right} y={chart.currentY - 6} textAnchor="end">今日 {formatMultiple(chart.current)}</text>
+                <text className={styles.axisLabel} x={PAD.left} y={HEIGHT - 8} fill={mutedColor}>{shortDate(chart.xStart)}</text>
+                <text className={styles.axisLabel} x={WIDTH - PAD.right} y={HEIGHT - 8} textAnchor="end" fill={mutedColor}>{shortDate(chart.xEnd)}</text>
             </svg>
+            <div className={styles.stats}>
+                <span>最低 {formatStat(chart.min)}</span>
+                <span>平均 {formatStat(chart.average)}</span>
+                <span>最高 {formatStat(chart.max)}</span>
+            </div>
+            <div className={styles.deviationHint}>浅红区域：均值 ±1 标准差</div>
         </div>
     )
 }

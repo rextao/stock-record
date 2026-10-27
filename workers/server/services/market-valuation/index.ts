@@ -8,6 +8,7 @@ type HistoryOfMarketPayload = {
     updated?: string
     current?: { forward?: number }
     forward?: Array<{ date?: string; value?: number }>
+    forwardOwn?: Array<{ date?: string; value?: number }>
 }
 
 type MarketDefinition = {
@@ -35,11 +36,16 @@ function normalizeSeries(definition: MarketDefinition, payload: HistoryOfMarketP
     if (points.length === 0) throw new Error(`EMPTY_VALUATION_${definition.id.toUpperCase()}`)
 
     const latest = points[points.length - 1]
+    const ownPoints = (payload.forwardOwn || [])
+        .map((point) => ({ date: point.date || '', value: Number(point.value) }))
+        .filter((point) => point.date && Number.isFinite(point.value) && point.value > 0)
+    const latestOwn = ownPoints[ownPoints.length - 1]
     return {
         id: definition.id,
         name: definition.name,
         points,
-        current: Number.isFinite(Number(payload.current?.forward)) ? Number(payload.current?.forward) : latest.value,
+        current: latestOwn?.value ?? (Number.isFinite(Number(payload.current?.forward)) ? Number(payload.current?.forward) : latest.value),
+        currentDate: latestOwn?.date || payload.updated || latest.date,
         updated: payload.updated || latest.date,
     }
 }

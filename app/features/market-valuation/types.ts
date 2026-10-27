@@ -8,6 +8,7 @@ export type MarketValuationSeries = {
     name: string
     points: ValuationPoint[]
     current: number | null
+    currentDate: string
     updated: string
 }
 
