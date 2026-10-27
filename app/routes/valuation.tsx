@@ -30,7 +30,6 @@ export default function ValuationRoute() {
             <div className={styles.header}>
                 <div>
                     <h1 className={styles.title}>估值</h1>
-                    <div className={styles.subtitle}>大盘前向市盈率</div>
                 </div>
                 <button type="button" className={styles.refreshButton} onClick={() => window.location.reload()} aria-label="刷新估值数据">
                     <RefreshCw size={18} />

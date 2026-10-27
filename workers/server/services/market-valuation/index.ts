@@ -30,7 +30,7 @@ type MarketDefinition = {
 }
 
 const MARKETS: MarketDefinition[] = [
-    { id: 'sp500', name: '标普 500 Forward P/E', path: '/api/sp500/forward-pe.json' },
+    { id: 'sp500', name: '标普500 Forward P/E', path: '/api/sp500/forward-pe.json' },
     { id: 'ndx', name: '纳指100 Forward P/E', path: '/api/ndx/forward-pe.json' },
     { id: 'soxx', name: 'SOXX Forward P/E', path: '/api/sectors/forward-pe.json', sectorKey: 'sox' },
 ]
