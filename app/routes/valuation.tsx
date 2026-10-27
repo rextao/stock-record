@@ -59,10 +59,6 @@ export default function ValuationRoute() {
                             rangeYears={rangeYears}
                         />
                     ))}
-                    <div className={styles.note}>前向市盈率为未来12个月一致预期口径，数据按周更新。</div>
-                    <a className={styles.source} href="https://historyofmarket.com/" target="_blank" rel="noreferrer">
-                        数据来源：History of Market
-                    </a>
                 </div>
             ) : (
                 <div className={styles.empty}>暂时无法获取估值数据</div>
