@@ -1,6 +1,7 @@
 import { TradingDB } from "./server/db/client";
 import { getStockProvider } from "./server/services/stock";
 import { getStockHistoryService } from "./server/services/stock/history";
+import { getMarketValuationService } from "./server/services/market-valuation";
 import { DEFAULT_HISTORY_RANGE, isHistoryRange } from "../app/features/stock-chart/types";
 
 // 应用是纯 CSR 的 SPA，Worker 只做两件事：提供 /api JSON 接口、把其余路径回退到 index.html
@@ -221,6 +222,16 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 			return json({ symbol, price: null, fetchedAt: quote.fetchedAt, reason: quote.error, error: message }, 502);
 		}
 		return json({ symbol, ...quote });
+	}
+
+	// ---------- 大盘估值（History of Market） ----------
+	if (resource === "market-valuation" && !second && method === "GET") {
+		try {
+			return json(await getMarketValuationService().getValuation());
+		} catch (error) {
+			console.error("[market-valuation] upstream failed", error);
+			return json({ error: "估值数据接口异常，请稍后重试", reason: "VALUATION_UPSTREAM_ERROR" }, 502);
+		}
 	}
 
 	// ---------- 历史日线（走势图） ----------

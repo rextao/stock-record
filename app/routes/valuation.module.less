@@ -1,0 +1,20 @@
+.page { min-height: 100%; padding: @gap-lg @gap-lg @page-bottom-tabbar; background-color: var(--app-bg); }
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: @gap-xl; }
+.title { margin: 0; color: var(--text-primary); font-size: 24px; font-weight: 600; }
+.subtitle { margin-top: @gap-xs; color: var(--text-muted); font-size: 13px; }
+.refreshButton { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--border); border-radius: @radius-md; background-color: var(--card-bg); color: var(--text-secondary); }
+.content { display: flex; flex-direction: column; gap: @gap-md; }
+.valueGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: @gap-md; }
+.valueCard, .chartCard { border: 1px solid var(--border); border-radius: @radius-xl; background-color: var(--card-bg); }
+.valueCard { display: flex; flex-direction: column; gap: @gap-xs; padding: @gap-lg; }
+.valueName { color: var(--text-secondary); font-size: 13px; }
+.value { color: var(--text-primary); font-size: 24px; font-variant-numeric: tabular-nums; }
+.valueDate { color: var(--text-muted); font-size: 11px; }
+.chartCard { padding: @gap-lg; }
+.note, .source { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.source { color: var(--accent-purple); text-decoration: none; }
+.loading, .empty { min-height: 240px; display: flex; align-items: center; justify-content: center; gap: @gap-md; color: var(--text-muted); font-size: 14px; }
+
+@media (max-width: 360px) {
+    .valueGrid { grid-template-columns: 1fr; }
+}

@@ -1,4 +1,4 @@
-import { Home, LineChart, User } from 'lucide-react'
+import { Home, LineChart, ChartNoAxesCombined, User } from 'lucide-react'
 import type { TabBarItemConfig } from '~/common/types/navigation'
 
 export const TAB_BAR_CONFIG: TabBarItemConfig[] = [
@@ -11,6 +11,11 @@ export const TAB_BAR_CONFIG: TabBarItemConfig[] = [
         key: '/chart',
         title: '图表',
         icon: LineChart,
+    },
+    {
+        key: '/valuation',
+        title: '估值',
+        icon: ChartNoAxesCombined,
     },
     {
         key: '/profile',

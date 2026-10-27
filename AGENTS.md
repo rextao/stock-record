@@ -31,7 +31,7 @@ app/
   root.tsx                  HTML 外壳、主题引导脚本、SW 注册脚本（生产环境内联在 <head>）
   routes.ts                 路由表；BasicLayout 内的页面有 TabBar，外面的没有
   routes/                   页面，每个页面一个同名 .module.less
-  features/                 业务模块（trade-record、stock-chart、exchange-rate）：组件、类型；trade-record/sessionCache.ts 是会话内 SWR 缓存，走势页组件在 stock-chart/pages
+  features/                 业务模块（trade-record、stock-chart、exchange-rate、market-valuation）：组件、类型；trade-record/sessionCache.ts 是会话内 SWR 缓存，走势页组件在 stock-chart/pages
   common/                   layouts / components / hooks / theme / pwa / network（全局连通性状态）
   api/trading.ts            前端请求封装
   styles/                   tokens.less（CSS 变量·主题令牌）、variables.less（Less 变量·自动注入）、global.less
@@ -44,6 +44,7 @@ workers/
   server/config/index.ts    读 env 生成 AppConfig
   server/services/stock/    行情服务：types(IStockProvider) / providers 注册表 / cached(缓存装饰器) / history(Yahoo + D1 本地副本)
   server/services/stock/history/  历史日线（Yahoo），与报价链路互不相干
+  server/services/market-valuation/  History of Market 大盘前向市盈率数据服务
 sw/sw.ts                    Service Worker 源码，由 scripts/build-sw.mjs 用 esbuild 打包
 public/                     manifest.json、图标、_headers（缓存头）
 ```

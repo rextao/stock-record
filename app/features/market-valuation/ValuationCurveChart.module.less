@@ -1,0 +1,13 @@
+.wrapper { width: 100%; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: @gap-md; margin-bottom: @gap-md; }
+.title { color: var(--text-primary); font-size: 16px; font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: @gap-sm; color: var(--text-secondary); font-size: 11px; }
+.legendItem { display: inline-flex; align-items: center; gap: 4px; }
+.ndxDot, .sp500Dot { width: 7px; height: 7px; border-radius: 50%; }
+.ndxDot { background-color: var(--accent-purple); }
+.sp500Dot { background-color: var(--pnl-up); }
+.canvas { display: block; width: 100%; height: auto; overflow: visible; }
+.canvas text { font-size: 11px; }
+.ndxLine, .sp500Line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ndxLine { stroke: var(--accent-purple); }
+.sp500Line { stroke: var(--pnl-up); }

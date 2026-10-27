@@ -4,6 +4,7 @@ export default [
     layout("common/layouts/BasicLayout.tsx", [
         index("routes/home.tsx"),
         route("chart", "routes/chart.tsx"),
+        route("valuation", "routes/valuation.tsx"),
         route("profile", "routes/profile.tsx"),
     ]),
 
