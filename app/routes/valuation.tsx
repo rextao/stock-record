@@ -10,7 +10,7 @@ import styles from './valuation.module.less'
 export default function ValuationRoute() {
     const [data, setData] = useState<MarketValuation | null>(null)
     const [loading, setLoading] = useState(true)
-    const [ranges, setRanges] = useState<Record<string, number>>({})
+    const [rangeYears, setRangeYears] = useState(10)
 
     useEffect(() => {
         const controller = new AbortController()
@@ -41,12 +41,23 @@ export default function ValuationRoute() {
                 <div className={styles.loading}><SpinLoading color="currentColor" />加载估值数据</div>
             ) : data ? (
                 <div className={styles.content}>
+                    <div className={styles.rangeBar} aria-label="估值图表时间范围">
+                        {[10, 5, 3].map((option) => (
+                            <button
+                                type="button"
+                                key={option}
+                                className={option === rangeYears ? styles.rangeButtonActive : styles.rangeButton}
+                                onClick={() => setRangeYears(option)}
+                            >
+                                {option}年
+                            </button>
+                        ))}
+                    </div>
                     {data.series.map((item) => (
                         <ValuationCard
                             key={item.id}
                             series={item}
-                            rangeYears={ranges[item.id] ?? 10}
-                            onRangeChange={(rangeYears) => setRanges((current) => ({ ...current, [item.id]: rangeYears }))}
+                            rangeYears={rangeYears}
                         />
                     ))}
                     <div className={styles.note}>前向市盈率为未来12个月一致预期口径，数据按周更新。</div>
@@ -64,11 +75,9 @@ export default function ValuationRoute() {
 function ValuationCard({
     series,
     rangeYears,
-    onRangeChange,
 }: {
     series: MarketValuation['series'][number]
     rangeYears: number
-    onRangeChange: (rangeYears: number) => void
 }) {
     const stats = getValuationStats(series, rangeYears)
     const status = getValuationStatus(stats)
@@ -88,18 +97,6 @@ function ValuationCard({
             <div className={styles.valueRow}>
                 <strong className={styles.value}>{series.current == null ? '--' : `${series.current.toFixed(1)}倍`}</strong>
                 <span className={styles.valueStats}>（最低 {stats.min.toFixed(2)} · 平均 {stats.average.toFixed(2)} · 最高 {stats.max.toFixed(2)}）</span>
-            </div>
-            <div className={styles.rangeBar}>
-                {[10, 3, 1].map((option) => (
-                    <button
-                        type="button"
-                        key={option}
-                        className={option === rangeYears ? styles.rangeButtonActive : styles.rangeButton}
-                        onClick={() => onRangeChange(option)}
-                    >
-                        近{option}年
-                    </button>
-                ))}
             </div>
             <ValuationCurveChart series={series} rangeYears={rangeYears} />
         </section>
