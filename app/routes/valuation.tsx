@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
 import { SpinLoading, Toast } from 'antd-mobile'
 import { RefreshCw } from 'lucide-react'
 import { fetchMarketValuation } from '~/api/marketValuation'
 import ValuationCurveChart from '~/features/market-valuation/ValuationCurveChart'
+import { getValuationStats, getValuationStatus } from '~/features/market-valuation/stats'
 import type { MarketValuation } from '~/features/market-valuation/types'
 import styles from './valuation.module.less'
 
 export default function ValuationRoute() {
-    const navigate = useNavigate()
     const [data, setData] = useState<MarketValuation | null>(null)
     const [loading, setLoading] = useState(true)
+    const [ranges, setRanges] = useState<Record<string, number>>({})
 
     useEffect(() => {
         const controller = new AbortController()
@@ -42,19 +42,12 @@ export default function ValuationRoute() {
             ) : data ? (
                 <div className={styles.content}>
                     {data.series.map((item) => (
-                        <section className={styles.valuationCard} key={item.id}>
-                            <div className={styles.cardHeader}>
-                                <div>
-                                    <h2 className={styles.cardTitle}>{item.name}前瞻市盈率</h2>
-                                    <strong className={styles.value}>{item.current == null ? '--' : `${item.current.toFixed(1)}倍`}</strong>
-                                </div>
-                                <span className={styles.valueDate}>更新于 {item.updated}</span>
-                            </div>
-                            <ValuationCurveChart series={item} />
-                            <button type="button" className={styles.historyButton} onClick={() => navigate(`/valuation/${item.id}`)}>
-                                查看历史数据
-                            </button>
-                        </section>
+                        <ValuationCard
+                            key={item.id}
+                            series={item}
+                            rangeYears={ranges[item.id] ?? 10}
+                            onRangeChange={(rangeYears) => setRanges((current) => ({ ...current, [item.id]: rangeYears }))}
+                        />
                     ))}
                     <div className={styles.note}>前向市盈率为未来12个月一致预期口径，数据按周更新。</div>
                     <a className={styles.source} href="https://historyofmarket.com/" target="_blank" rel="noreferrer">
@@ -65,5 +58,50 @@ export default function ValuationRoute() {
                 <div className={styles.empty}>暂时无法获取估值数据</div>
             )}
         </div>
+    )
+}
+
+function ValuationCard({
+    series,
+    rangeYears,
+    onRangeChange,
+}: {
+    series: MarketValuation['series'][number]
+    rangeYears: number
+    onRangeChange: (rangeYears: number) => void
+}) {
+    const stats = getValuationStats(series, rangeYears)
+    const status = getValuationStatus(stats)
+
+    return (
+        <section className={styles.valuationCard}>
+            <div className={styles.cardHeader}>
+                <div className={styles.titleRow}>
+                    <h2 className={styles.cardTitle}>{series.name}</h2>
+                    <span
+                        className={`${styles.status} ${status === '高估' ? styles.statusHigh : status === '低估' ? styles.statusLow : styles.statusFair}`}
+                    >
+                        {status}
+                    </span>
+                </div>
+            </div>
+            <div className={styles.valueRow}>
+                <strong className={styles.value}>{series.current == null ? '--' : `${series.current.toFixed(1)}倍`}</strong>
+                <span className={styles.valueStats}>（最低 {stats.min.toFixed(2)} · 平均 {stats.average.toFixed(2)} · 最高 {stats.max.toFixed(2)}）</span>
+            </div>
+            <div className={styles.rangeBar}>
+                {[10, 3, 1].map((option) => (
+                    <button
+                        type="button"
+                        key={option}
+                        className={option === rangeYears ? styles.rangeButtonActive : styles.rangeButton}
+                        onClick={() => onRangeChange(option)}
+                    >
+                        近{option}年
+                    </button>
+                ))}
+            </div>
+            <ValuationCurveChart series={series} rangeYears={rangeYears} />
+        </section>
     )
 }

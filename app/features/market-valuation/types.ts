@@ -4,7 +4,7 @@ export type ValuationPoint = {
 }
 
 export type MarketValuationSeries = {
-    id: 'ndx' | 'sp500'
+    id: 'ndx' | 'sp500' | 'soxx'
     name: string
     points: ValuationPoint[]
     current: number | null
@@ -15,5 +15,5 @@ export type MarketValuationSeries = {
 export type MarketValuation = {
     updated: string
     source: string
-    series: [MarketValuationSeries, MarketValuationSeries]
+    series: MarketValuationSeries[]
 }

@@ -22,7 +22,6 @@ export default [
 
     // 新增：持仓详情与单笔交易详情
     route("holdings/:id", "routes/holdings/detail.tsx"),
-    route("valuation/:id", "routes/valuation/detail.tsx"),
     // 历史走势图：独立页，横屏空间宝贵，不带 TabBar
     route("holdings/:id/history", "routes/holdings/history.tsx"),
     route("trade/:id", "routes/trade/detail.tsx"),

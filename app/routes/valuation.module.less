@@ -5,11 +5,20 @@
 .refreshButton { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--border); border-radius: @radius-md; background-color: var(--card-bg); color: var(--text-secondary); }
 .content { display: flex; flex-direction: column; gap: @gap-md; }
 .valuationCard { border: 1px solid var(--border); border-radius: @radius-xl; background-color: var(--card-bg); padding: @gap-lg; }
-.cardHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: @gap-md; margin-bottom: @gap-md; }
-.cardTitle { margin: 0 0 @gap-sm; color: var(--text-primary); font-size: 16px; font-weight: 600; }
+.cardHeader { margin-bottom: @gap-sm; }
+.titleRow { display: flex; align-items: center; justify-content: space-between; gap: @gap-md; min-width: 0; }
+.cardTitle { margin: 0; color: var(--text-primary); font-size: 16px; font-weight: 600; }
+.status { flex-shrink: 0; font-size: 12px; }
+.statusHigh { color: var(--pnl-up); }
+.statusLow { color: var(--pnl-down); }
+.statusFair { color: var(--text-secondary); }
 .value { color: var(--text-primary); font-size: 24px; font-variant-numeric: tabular-nums; }
 .valueDate { flex-shrink: 0; color: var(--text-muted); font-size: 11px; }
-.historyButton { width: 100%; margin-top: @gap-md; padding: @gap-sm 0; border: 0; border-top: 1px solid var(--border); background: transparent; color: var(--accent-purple); font-size: 13px; text-align: left; }
+.valueRow { display: flex; align-items: baseline; flex-wrap: wrap; gap: @gap-xs; margin-bottom: @gap-md; }
+.valueStats { color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.rangeBar { display: flex; gap: @gap-xs; margin-bottom: @gap-sm; }
+.rangeButton, .rangeButtonActive { padding: 4px @gap-md; border: 1px solid var(--border); border-radius: @radius-pill; background-color: transparent; color: var(--text-secondary); font-size: 12px; }
+.rangeButtonActive { border-color: var(--accent); background-color: var(--accent); color: var(--text-on-accent); }
 .note, .source { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
 .source { color: var(--accent-purple); text-decoration: none; }
 .loading, .empty { min-height: 240px; display: flex; align-items: center; justify-content: center; gap: @gap-md; color: var(--text-muted); font-size: 14px; }

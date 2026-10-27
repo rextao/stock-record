@@ -11,21 +11,36 @@ type HistoryOfMarketPayload = {
     forwardOwn?: Array<{ date?: string; value?: number }>
 }
 
+type SectorHistoryOfMarketPayload = {
+    updated?: string
+    sectors?: {
+        sox?: {
+            series?: Array<{ date?: string; value?: number }>
+            forwardOwn?: Array<{ date?: string; value?: number }>
+            forwardOwnLatest?: { date?: string; value?: number }
+        }
+    }
+}
+
 type MarketDefinition = {
     id: MarketValuationSeries['id']
     name: string
     path: string
+    sectorKey?: 'sox'
 }
 
 const MARKETS: MarketDefinition[] = [
-    { id: 'ndx', name: '纳斯达克100', path: '/api/ndx/forward-pe.json' },
-    { id: 'sp500', name: '标普500', path: '/api/sp500/forward-pe.json' },
+    { id: 'sp500', name: '标普 500 Forward P/E', path: '/api/sp500/forward-pe.json' },
+    { id: 'ndx', name: '纳指100 Forward P/E', path: '/api/ndx/forward-pe.json' },
+    { id: 'soxx', name: 'SOXX Forward P/E', path: '/api/sectors/forward-pe.json', sectorKey: 'sox' },
 ]
 
 const cache = createCache('market-valuation:history-of-market')
 
-function normalizeSeries(definition: MarketDefinition, payload: HistoryOfMarketPayload): MarketValuationSeries {
-    const points = (payload.forward || [])
+function normalizeSeries(definition: MarketDefinition, payload: HistoryOfMarketPayload | SectorHistoryOfMarketPayload): MarketValuationSeries {
+    const sector = definition.sectorKey ? (payload as SectorHistoryOfMarketPayload).sectors?.[definition.sectorKey] : null
+    const forward = sector?.series || (payload as HistoryOfMarketPayload).forward || []
+    const points = forward
         .map((point): ValuationPoint | null => {
             const value = Number(point.value)
             if (!point.date || !Number.isFinite(value) || value <= 0) return null
@@ -36,7 +51,7 @@ function normalizeSeries(definition: MarketDefinition, payload: HistoryOfMarketP
     if (points.length === 0) throw new Error(`EMPTY_VALUATION_${definition.id.toUpperCase()}`)
 
     const latest = points[points.length - 1]
-    const ownPoints = (payload.forwardOwn || [])
+    const ownPoints = (sector?.forwardOwn || (payload as HistoryOfMarketPayload).forwardOwn || [])
         .map((point) => ({ date: point.date || '', value: Number(point.value) }))
         .filter((point) => point.date && Number.isFinite(point.value) && point.value > 0)
     const latestOwn = ownPoints[ownPoints.length - 1]
@@ -44,8 +59,8 @@ function normalizeSeries(definition: MarketDefinition, payload: HistoryOfMarketP
         id: definition.id,
         name: definition.name,
         points,
-        current: latestOwn?.value ?? (Number.isFinite(Number(payload.current?.forward)) ? Number(payload.current?.forward) : latest.value),
-        currentDate: latestOwn?.date || payload.updated || latest.date,
+        current: latestOwn?.value ?? (Number.isFinite(Number((payload as HistoryOfMarketPayload).current?.forward)) ? Number((payload as HistoryOfMarketPayload).current?.forward) : latest.value),
+        currentDate: latestOwn?.date || sector?.forwardOwnLatest?.date || payload.updated || latest.date,
         updated: payload.updated || latest.date,
     }
 }
@@ -72,7 +87,7 @@ export function getMarketValuationService() {
                     return {
                         updated: series.map((item) => item.updated).sort().at(-1) || new Date().toISOString().slice(0, 10),
                         source: SOURCE_URL,
-                        series: series as MarketValuation['series'],
+                        series,
                     }
                 },
             )
