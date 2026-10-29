@@ -15,7 +15,7 @@
 需要 Node >= 24.18.0（本机装在 `~/.nvm/versions/node/v24.18.0/bin`，默认 node 是 20，先 `export PATH=...` 再跑）。
 
 ```bash
-npm run dev      # vite dev server，纯前端，/api 不通
+npm run dev      # vite dev server，纯前端，/api 不通；启动时自带打印 Network 局域网地址（vite.config.ts server.host: true）
 npm run preview  # build + 打印局域网 IP + wrangler dev（真机/PWA 调试走这个，端口 8788）
 npm run build    # react-router build + scripts/build-sw.mjs 生成 sw.js
 npm run deploy   # build + wrangler deploy

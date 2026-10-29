@@ -8,6 +8,10 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+	// 监听 0.0.0.0，启动时 Vite 会自带打印 Network 局域网地址，方便手机直连
+	server: {
+		host: true,
+	},
 	plugins: [
 		// SPA 模式下 react-router 不再创建 ssr 环境，Worker 只承载 /api 与静态资源回退
 		cloudflare(),
