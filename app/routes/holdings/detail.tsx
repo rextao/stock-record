@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLoaderData, useNavigate, useFetcher, useLocation } from "react-router";
 import { NavBar } from "antd-mobile";
+import { ArrowRight } from "lucide-react";
 import clsx from "clsx";
 import { SellModal } from "../../features/trade-record/components/SellModal";
 import { fetchHoldingDetail, sellByItem } from "../../api/trading";
@@ -125,34 +126,36 @@ export default function HoldingsDetailRoute() {
                     <div className={styles.emptyRecords}>暂无交易记录</div>
                 ) : (
                     transactionRecords.map((record: any) => {
+                        const profitPct = record.sellPrice != null && record.buyPrice > 0
+                            ? ((record.sellPrice - record.buyPrice) / record.buyPrice) * 100
+                            : null;
                         if (fromChart) {
-                            // 盈亏排行入口的紧凑行：收益在最前，买卖两栏价格在上、时间在下，
-                            // 时间用 MM-DD HH:mm 短格式，保证 320px 小屏也放得下
+                            // 盈亏排行入口的紧凑行：左侧收益额 + 小字百分比，右侧「买入价 → 卖出价」
+                            // 加对应时间，箭头代替买卖文字
                             return (
                                 <div key={record.id} className={styles.compactRecord}>
                                     <span className={clsx(styles.compactProfit, pnlClass(record.profit))}>
                                         {record.profit >= 0 ? '+' : ''}{record.profit.toFixed(2)}
+                                        {profitPct != null && (
+                                            <span className={styles.compactPct}>
+                                                {' '}({profitPct >= 0 ? '+' : ''}{profitPct.toFixed(2)}%)
+                                            </span>
+                                        )}
                                     </span>
-                                    <div className={styles.compactSide}>
-                                        <span className={styles.compactPrice}>
-                                            <span className={styles.compactLabel}>买</span>
-                                            {formatPrice(record.buyPrice)}
-                                        </span>
-                                        <span className={styles.compactTime}>{formatLocalShort(record.buyTime)}</span>
-                                    </div>
-                                    <div className={styles.compactSide}>
-                                        <span className={styles.compactPrice}>
-                                            <span className={styles.compactLabel}>卖</span>
-                                            {formatPrice(record.sellPrice)}
-                                        </span>
-                                        <span className={styles.compactTime}>{formatLocalShort(record.sellTime)}</span>
+                                    <div className={styles.compactTrade}>
+                                        <div className={styles.compactPrices}>
+                                            <span>{formatPrice(record.buyPrice)}</span>
+                                            <ArrowRight size={12} className={styles.compactArrow} aria-hidden />
+                                            <span>{formatPrice(record.sellPrice)}</span>
+                                        </div>
+                                        <div className={styles.compactTimes}>
+                                            <span>{formatLocalShort(record.buyTime)}</span>
+                                            <span>{formatLocalShort(record.sellTime)}</span>
+                                        </div>
                                     </div>
                                 </div>
                             );
                         }
-                        const profitPct = record.sellPrice != null && record.buyPrice > 0
-                            ? ((record.sellPrice - record.buyPrice) / record.buyPrice) * 100
-                            : null;
                         return (
                             <div key={record.id} className={styles.transactionCard}>
                                 <div className={styles.transactionHeader}>
