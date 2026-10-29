@@ -163,8 +163,8 @@ export const fetchTradeDetail = (id: number, options: RequestOptions = {}) =>
 export const createTrade = (payload: {
 	itemId: number;
 	currentPrice: number;
-	targetPrice: number;
-	stopLossPrice: number;
+	targetPrice: number | null;
+	stopLossPrice: number | null;
 	buyQuantity: number;
 	notes?: string;
 }) => postJson<{ id: number }>("/api/trades", payload).then(afterMutation);

@@ -111,7 +111,7 @@ SW 注册脚本内联在 `<head>`（`app/common/pwa/swBootstrap.ts`），不能�
 
 本地放 `.dev.vars`（已 gitignore）。线上 `FINNHUB_API_KEY`、`TWELVE_DATA_API_KEY` 必须在 Cloudflare Dashboard 建成 **Secret 类型**——`wrangler.json` 的 `vars` 会覆盖同名 Secret。验证：`curl -s https://域名/api/health`，看 `hasQuoteKey` / `hasQuoteFallbackKey` / `stockProvider` / `db` / `tables` / `counts`。
 
-D1 库名 `stock-storage`，`database_id` 是 `31f66cce-ebe7-473b-9da0-343f81a9aec5`。初始化本地库：`npx wrangler d1 execute stock-storage --local --file workers/server/db/schema.sql`。**不要动远端库**，改了 `schema.sql` 只提醒用户自己跑一次 `--remote`（表没建时行情持久化会自己降级，不会报错）。
+D1 库名 `stock-storage`，`database_id` 是 `31f66cce-ebe7-473b-9da0-343f81a9aec5`。初始化本地库：`npx wrangler d1 execute stock-storage --local --file workers/server/db/schema.sql`。**不要动远端库**，改了 `schema.sql` 只提醒用户自己跑一次 `--remote`（表没建时行情持久化会自己降级，不会报错）。已有库若要允许交易的预期价/止损价为空，先执行 `workers/server/db/migrate-optional-trade-prices.sql`。
 
 ⚠️ 未解疑点：`wrangler.json` 的 `name` 是 `stock-record`，线上域名却是 `stock.rextao666.workers.dev`，且 `wrangler secret put` 报过「没有叫 stock-record 的 Worker」。多次出现「改了线上没变化」，怀疑用户访问的站点不是这个 Worker，尚未确认。
 

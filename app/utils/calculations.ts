@@ -1,10 +1,10 @@
-export function calcUpsidePct(currentPrice: number, targetPrice: number): number {
-  if (currentPrice === 0) return 0
+export function calcUpsidePct(currentPrice: number, targetPrice: number | null): number | null {
+  if (currentPrice === 0 || targetPrice == null) return null
   return ((targetPrice - currentPrice) / currentPrice) * 100
 }
 
-export function calcDownsidePct(currentPrice: number, stopLossPrice: number): number {
-  if (currentPrice === 0) return 0
+export function calcDownsidePct(currentPrice: number, stopLossPrice: number | null): number | null {
+  if (currentPrice === 0 || stopLossPrice == null) return null
   return ((currentPrice - stopLossPrice) / currentPrice) * 100
 }
 

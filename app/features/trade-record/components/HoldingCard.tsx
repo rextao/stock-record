@@ -19,6 +19,7 @@ import { formatLocalShort } from '../../../utils/datetime';
 import styles from './HoldingCard.module.less';
 
 const formatPrice = (val: number) => val.toFixed(2);
+const formatOptionalPrice = (val: number | null) => (val == null ? '-' : formatPrice(val));
 // 仅显示 MM-DD HH:mm，适合列表展示。DB 存的是 UTC 墙上时间，
 // 不能直接截字符串，要按设备时区折算（详见 app/utils/datetime.ts）
 const formatShortTime = (timeStr: string) => formatLocalShort(timeStr);
@@ -96,7 +97,7 @@ export function HoldingCard({ holding }: { holding: any }) {
     // 跌破止损的最大幅度：只看还有剩余仓位、且止损价有效的 sub_trade
     const worstBreachPct = hasPrice
         ? (holding.sub_trades as any[]).reduce((worst, st) => {
-              if (st.remaining <= 0 || st.stop_loss_price <= 0) return worst;
+              if (st.remaining <= 0 || st.stop_loss_price == null || st.stop_loss_price <= 0) return worst;
               const breach = ((st.stop_loss_price - (quote.price as number)) / st.stop_loss_price) * 100;
               return breach > worst ? breach : worst;
           }, 0)
@@ -278,9 +279,13 @@ export function HoldingCard({ holding }: { holding: any }) {
                 <div className={styles.subTradeList}>
                     {holding.sub_trades.map((st: any) => {
                         const upside =
-                            st.current_price > 0 ? ((st.target_price - st.current_price) / st.current_price) * 100 : 0;
+                            st.target_price != null && st.current_price > 0
+                                ? ((st.target_price - st.current_price) / st.current_price) * 100
+                                : null;
                         const downside =
-                            st.current_price > 0 ? ((st.current_price - st.stop_loss_price) / st.current_price) * 100 : 0;
+                            st.stop_loss_price != null && st.current_price > 0
+                                ? ((st.current_price - st.stop_loss_price) / st.current_price) * 100
+                                : null;
 
                         const hasLive = quote.price != null;
                         const livePnlAmount = hasLive ? ((quote.price as number) - st.current_price) * st.remaining : 0;
@@ -305,19 +310,18 @@ export function HoldingCard({ holding }: { holding: any }) {
                                     {/* 1. 预期列 */}
                                     <div className={styles.metricCol}>
                                         <span className={styles.metricLabel}>预期</span>
-                                        <span className={styles.metricValue}>{formatPrice(st.target_price)}</span>
-                                        <span className={clsx(styles.metricPct, pnlClass(upside))}>
-                                            {upside >= 0 ? '+' : ''}
-                                            {upside.toFixed(1)}%
+                                        <span className={styles.metricValue}>{formatOptionalPrice(st.target_price)}</span>
+                                        <span className={clsx(styles.metricPct, upside == null ? styles.pnlEmpty : pnlClass(upside))}>
+                                            {upside == null ? '-' : `${upside >= 0 ? '+' : ''}${upside.toFixed(1)}%`}
                                         </span>
                                     </div>
 
                                     {/* 2. 止损列（放在当前盈亏之前，读起来更连贯） */}
                                     <div className={styles.metricCol}>
                                         <span className={styles.metricLabel}>止损</span>
-                                        <span className={styles.metricValue}>{formatPrice(st.stop_loss_price)}</span>
-                                        <span className={clsx(styles.metricPct, styles.down)}>
-                                            {-downside.toFixed(1)}%
+                                        <span className={styles.metricValue}>{formatOptionalPrice(st.stop_loss_price)}</span>
+                                        <span className={clsx(styles.metricPct, downside == null ? styles.pnlEmpty : styles.down)}>
+                                            {downside == null ? '-' : `${(-downside).toFixed(1)}%`}
                                         </span>
                                     </div>
 

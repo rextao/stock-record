@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { Popup, Calendar, SpinLoading, Toast } from 'antd-mobile'
 import { ChartNoAxesColumn } from 'lucide-react'
 import clsx from 'clsx'
@@ -61,6 +62,7 @@ const seedQuotePrices = (holdings: any[]): Record<string, number> => {
 // 客户端组件
 // ==========================================
 export default function ChartRoute() {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<TabKey>('pnl');
 
     // 首屏先用上次缓存的交易列表垫（切 Tab 秒开），下面的 effect 再后台重拉纠正。
@@ -381,7 +383,19 @@ export default function ChartRoute() {
                                 <div className={styles.rankEmpty}>暂无卖出记录</div>
                             ) : (
                                 overall.ranking.map((row) => (
-                                    <div key={row.id} className={styles.rankRow}>
+                                    <div
+                                        key={row.id}
+                                        className={styles.rankRow}
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => navigate(`/holdings/${row.id}`)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault();
+                                                navigate(`/holdings/${row.id}`);
+                                            }
+                                        }}
+                                    >
                                         <span className={styles.rankName}>{row.symbol || row.name}</span>
                                         <div className={styles.rankLastSell}>
                                             <span>{row.lastSellPrice.toFixed(2)}</span>

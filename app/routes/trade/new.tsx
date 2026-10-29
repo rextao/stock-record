@@ -3,7 +3,7 @@ import { useLoaderData, useNavigate, useSubmit, useLocation, redirect } from "re
 import { NavBar, Button, Toast } from "antd-mobile";
 import clsx from "clsx";
 import { createTrade, fetchItems, fetchQuote } from "../../api/trading";
-import { RefreshCw } from "lucide-react";
+import { Copy, RefreshCw } from "lucide-react";
 import NumericKeypad, { NUMERIC_KEYPAD_ID } from "../../common/components/NumericKeypad";
 import PlainTextArea from "../../common/components/PlainTextArea";
 import { sanitizeDecimalInput, sanitizeIntegerInput } from "../../utils/numberInput";
@@ -29,13 +29,23 @@ export async function clientAction({ request }: { request: Request }) {
 
     const itemId = Number(formData.get("itemId"));
     const currentPrice = Number(formData.get("currentPrice"));
-    const targetPrice = Number(formData.get("targetPrice"));
-    const stopLossPrice = Number(formData.get("stopLossPrice"));
+    const parseOptionalPrice = (value: FormDataEntryValue | null) => {
+        const raw = String(value ?? "").trim();
+        return raw ? Number(raw) : null;
+    };
+    const targetPrice = parseOptionalPrice(formData.get("targetPrice"));
+    const stopLossPrice = parseOptionalPrice(formData.get("stopLossPrice"));
     const buyQuantity = Number(formData.get("buyQuantity"));
     const notes = (formData.get("notes") as string) || "";
 
-    if (!itemId || !currentPrice || !targetPrice || !stopLossPrice || !buyQuantity) {
+    if (!itemId || !Number.isFinite(currentPrice) || currentPrice <= 0 || !Number.isFinite(buyQuantity) || buyQuantity <= 0) {
         return { error: "核心数据不完整" };
+    }
+    if (
+        (targetPrice !== null && (!Number.isFinite(targetPrice) || targetPrice <= 0)) ||
+        (stopLossPrice !== null && (!Number.isFinite(stopLossPrice) || stopLossPrice <= 0))
+    ) {
+        return { error: "预期买入价和止损价必须为正数" };
     }
 
     try {
@@ -105,10 +115,10 @@ export default function NewTradeRoute() {
 
     // 顺序即键盘上「上一项 / 下一项」的顺序；备注是自由文本，走系统键盘，刻意不进这个序列
     const priceFields = [
-        { label: "当前价", value: currentPrice, onChange: setCurrentPrice, kind: "decimal" as const },
-        { label: "预期价", value: targetPrice, onChange: setTargetPrice, kind: "decimal" as const },
-        { label: "止损价", value: stopLossPrice, onChange: setStopLossPrice, kind: "decimal" as const },
-        { label: "买入数量", value: buyQuantity, onChange: setBuyQuantity, kind: "integer" as const },
+        { label: "当前价", value: currentPrice, onChange: setCurrentPrice, kind: "decimal" as const, required: true },
+        { label: "预期买入价", value: targetPrice, onChange: setTargetPrice, kind: "decimal" as const, required: false },
+        { label: "止损价", value: stopLossPrice, onChange: setStopLossPrice, kind: "decimal" as const, required: false },
+        { label: "买入数量", value: buyQuantity, onChange: setBuyQuantity, kind: "integer" as const, required: true },
     ];
 
     const activeField = activeIndex === null ? null : priceFields[activeIndex];
@@ -194,6 +204,7 @@ export default function NewTradeRoute() {
     // 选中标的的最近卖出价，以及与「当前价」的距离百分比（当前价未填时不算）
     const selectedItem = selectedItemId != null ? items.find((it) => it.id === selectedItemId) : undefined;
     const selectedSymbol = String(selectedItem?.symbol || "").trim();
+    const hasPreviousConfig = selectedItem?.last_target_price != null || selectedItem?.last_stop_loss_price != null;
     const lastSellPrice = selectedItem?.last_sell_price ?? null;
     const lastSellQty = selectedItem?.last_sell_quantity ?? null;
     const lastSellGap = (lastSellPrice !== null && current > 0)
@@ -226,6 +237,12 @@ export default function NewTradeRoute() {
         }
     };
 
+    const handleFillPreviousConfig = () => {
+        if (!selectedItem) return;
+        setTargetPrice(selectedItem.last_target_price == null ? "" : selectedItem.last_target_price.toFixed(2));
+        setStopLossPrice(selectedItem.last_stop_loss_price == null ? "" : selectedItem.last_stop_loss_price.toFixed(2));
+    };
+
     const upside = (current > 0 && target > 0) ? ((target - current) / current) * 100 : null;
     const downside = (current > 0 && stopLoss > 0) ? ((current - stopLoss) / current) * 100 : null;
     let rewardRisk: string | null = null;
@@ -248,8 +265,12 @@ export default function NewTradeRoute() {
             Toast.show("请选择标的条目");
             return;
         }
-        if (!current || !target || !stopLoss) {
-            Toast.show("请填写完整的价格信息");
+        if (!current) {
+            Toast.show("请输入当前价");
+            return;
+        }
+        if ((targetPrice && target <= 0) || (stopLossPrice && stopLoss <= 0)) {
+            Toast.show("预期买入价和止损价必须为正数");
             return;
         }
         if (!buyQuantity || parseFloat(buyQuantity) <= 0) {
@@ -321,17 +342,25 @@ export default function NewTradeRoute() {
                 {/* 2. 价格与数量信息 */}
                 <div className={clsx(styles.sectionTitle, styles.sectionTitleSpaced, styles.priceHeader)}>
                     <span>价格信息</span>
-                    {selectedSymbol && (
-                        <button
-                            type="button"
-                            className={clsx(styles.fetchPriceButton, fetchingPrice && styles.fetchPriceSpinning)}
-                            onClick={handleFetchCurrentPrice}
-                            disabled={fetchingPrice || priceCooling}
-                        >
-                            <RefreshCw size={13} />
-                            获取现价
-                        </button>
-                    )}
+                    <div className={styles.priceActions}>
+                        {hasPreviousConfig && (
+                            <button type="button" className={styles.fetchPriceButton} onClick={handleFillPreviousConfig}>
+                                <Copy size={13} />
+                                沿用上笔
+                            </button>
+                        )}
+                        {selectedSymbol && (
+                            <button
+                                type="button"
+                                className={clsx(styles.fetchPriceButton, fetchingPrice && styles.fetchPriceSpinning)}
+                                onClick={handleFetchCurrentPrice}
+                                disabled={fetchingPrice || priceCooling}
+                            >
+                                <RefreshCw size={13} />
+                                获取现价
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className={styles.priceGrid}>
@@ -356,11 +385,11 @@ export default function NewTradeRoute() {
                             >
                                 <span className={styles.cellLabel}>
                                     {field.label}
-                                    <span className={styles.cellRequired}>*</span>
+                                    {field.required && <span className={styles.cellRequired}>*</span>}
                                 </span>
                                 <span className={styles.cellValue}>
                                     {field.value || (
-                                        <span className={styles.cellPlaceholder}>{isInteger ? "0" : "0.00"}</span>
+                                        <span className={styles.cellPlaceholder}>{field.required ? (isInteger ? "0" : "0.00") : "-"}</span>
                                     )}
                                     {isActive && <span className={styles.caret} aria-hidden="true" />}
                                 </span>

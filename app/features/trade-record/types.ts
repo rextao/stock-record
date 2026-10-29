@@ -21,14 +21,17 @@ export interface ItemWithUsage extends Item {
 	last_sell_time: string | null;
 	/** 最近一次卖出的数量（仓位），与 last_sell_price 同一笔卖出 */
 	last_sell_quantity: number | null;
+	/** 最近一笔买入记录的预期买入价和止损价，用于买入页快速沿用 */
+	last_target_price: number | null;
+	last_stop_loss_price: number | null;
 }
 
 export interface Trade {
 	id: number;
 	item_id: number;
 	current_price: number;
-	target_price: number;
-	stop_loss_price: number;
+	target_price: number | null;
+	stop_loss_price: number | null;
 	actual_price: number | null;
 	buy_quantity: number;
 	sold_quantity: number;
@@ -49,8 +52,8 @@ export interface SellRecord {
 export interface TradeWithItem extends Trade {
   item_name: string;
   item_symbol: string | null;
-	upside_pct: number;
-	downside_pct: number;
+	upside_pct: number | null;
+	downside_pct: number | null;
 	actual_return_pct: number | null;
 	is_fully_closed: boolean;
 	total_profit: number | null;
@@ -62,8 +65,8 @@ export interface HoldingSubTrade {
 	id: number;
 	buy_time: string;
 	current_price: number;
-	target_price: number;
-	stop_loss_price: number;
+	target_price: number | null;
+	stop_loss_price: number | null;
 	buy_quantity: number;
 	sold_quantity: number;
 	remaining: number;
@@ -123,8 +126,8 @@ export interface HoldingDetailPayload {
 /** 单笔交易详情页的数据形态 */
 export interface TradeDetail extends Trade {
 	item_name: string;
-	upside_pct: number;
-	downside_pct: number;
+	upside_pct: number | null;
+	downside_pct: number | null;
 	actual_return_pct: number | null;
 	is_fully_closed: boolean;
 	remaining: number;

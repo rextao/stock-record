@@ -40,56 +40,32 @@ export default function HoldingsDetailRoute() {
     const [sellHolding, setSellHolding] = useState<any>(null);
     const fetcher = useFetcher();
 
-    // 渲染单张交易卡片
-    const renderTradeCard = (t: any) => {
-        const isClosed = t.sold_quantity >= t.buy_quantity;
-        const isPartial = t.sold_quantity > 0 && !isClosed;
-        const statusClass = isClosed ? styles.pillClosed : isPartial ? styles.pillPartial : styles.pillOpen;
-
-        return (
-            <div key={t.id} onClick={() => navigate(`/trade/${t.id}`)} className={styles.tradeCard}>
-                <div className={styles.tradeHeader}>
-                    <div className={styles.buyTime}>买入时间 {formatDateTime(t.buy_time)}</div>
-                    <div className={clsx(styles.pill, statusClass)}>
-                        {isClosed ? '已平仓' : isPartial ? '部分平仓' : '未平仓'}
-                    </div>
-                </div>
-
-                <div className={styles.tradeGrid}>
-                    <div className={styles.gridCell}>
-                        <div className={styles.gridLabel}>买入价格</div>
-                        <div className={styles.gridValue}>{formatPrice(t.current_price)}</div>
-                    </div>
-                    <div className={styles.gridCell}>
-                        <div className={styles.gridLabel}>买入仓位</div>
-                        <div className={styles.gridValue}>{t.buy_quantity}</div>
-                    </div>
-                    {!isClosed && t.sold_quantity > 0 && (
-                        <div className={styles.remainingRow}>剩余仓位 {t.remaining}</div>
-                    )}
-                </div>
-
-                {t.sell_records.length > 0 && (
-                    <div className={styles.sellRecords}>
-                        <div className={styles.sellRecordsTitle}>卖出记录（{t.sell_records.length}）</div>
-                        {t.sell_records.map((r: any) => {
-                            const pnl = (r.sell_price - t.current_price) * r.sell_quantity;
-                            return (
-                                <div key={r.id} className={styles.sellRecordRow}>
-                                    <div className={styles.sellRecordMeta}>
-                                        {formatDateTime(r.sell_time)} · 仓位 {r.sell_quantity}
-                                    </div>
-                                    <div className={clsx(styles.sellRecordPnl, pnlClass(pnl))}>
-                                        {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-        );
-    };
+    const transactionRecords = [...openTrades, ...closedTrades]
+        .flatMap((trade: any) => {
+            const soldRecords = (trade.sell_records || []).map((record: any) => ({
+                id: `sell-${record.id}`,
+                buyTime: trade.buy_time,
+                buyPrice: trade.current_price,
+                quantity: record.sell_quantity,
+                sellTime: record.sell_time,
+                sellPrice: record.sell_price,
+                profit: (record.sell_price - trade.current_price) * record.sell_quantity,
+            }));
+            if (trade.remaining <= 0) return soldRecords;
+            return [
+                ...soldRecords,
+                {
+                    id: `open-${trade.id}`,
+                    buyTime: trade.buy_time,
+                    buyPrice: trade.current_price,
+                    quantity: trade.remaining,
+                    sellTime: null,
+                    sellPrice: null,
+                    profit: null,
+                },
+            ];
+        })
+        .sort((a: any, b: any) => b.buyTime.localeCompare(a.buyTime) || b.id.localeCompare(a.id));
 
     return (
         <div className={styles.page}>
@@ -127,13 +103,45 @@ export default function HoldingsDetailRoute() {
                     </div>
                 </div>
 
-                <div className={styles.sectionTitle}>未平仓（{openTrades.length}）</div>
-                {openTrades.map(renderTradeCard)}
-
-                <div className={clsx(styles.sectionTitle, styles.sectionTitleSpaced)}>
-                    已平仓（{closedTrades.length}）
-                </div>
-                {closedTrades.map(renderTradeCard)}
+                <div className={styles.sectionTitle}>交易记录（{transactionRecords.length}）</div>
+                {transactionRecords.length === 0 ? (
+                    <div className={styles.emptyRecords}>暂无交易记录</div>
+                ) : (
+                    transactionRecords.map((record: any) => {
+                        const profitPct = record.sellPrice != null && record.buyPrice > 0
+                            ? ((record.sellPrice - record.buyPrice) / record.buyPrice) * 100
+                            : null;
+                        return (
+                            <div key={record.id} className={styles.transactionCard}>
+                                <div className={styles.transactionHeader}>
+                                    <span className={styles.transactionQuantity}>仓位 {record.quantity}</span>
+                                    <span className={clsx(styles.pill, record.sellTime ? styles.pillClosed : styles.pillOpen)}>
+                                        {record.sellTime ? '已卖出' : '持仓中'}
+                                    </span>
+                                </div>
+                                <div className={styles.transactionGrid}>
+                                    <div className={styles.transactionSide}>
+                                        <span className={styles.transactionLabel}>买入</span>
+                                        <span className={styles.transactionTime}>{formatDateTime(record.buyTime)}</span>
+                                        <strong className={styles.transactionPrice}>{formatPrice(record.buyPrice)}</strong>
+                                    </div>
+                                    <div className={styles.transactionSide}>
+                                        <span className={styles.transactionLabel}>卖出</span>
+                                        <span className={styles.transactionTime}>
+                                            {record.sellTime ? formatDateTime(record.sellTime) : '-'}
+                                        </span>
+                                        <strong className={styles.transactionPrice}>
+                                            {record.sellPrice == null ? '-' : formatPrice(record.sellPrice)}
+                                        </strong>
+                                    </div>
+                                </div>
+                                <div className={clsx(styles.transactionProfit, record.profit == null ? undefined : pnlClass(record.profit))}>
+                                    收益 {record.profit == null ? '-' : `${record.profit >= 0 ? '+' : ''}${record.profit.toFixed(2)} (${record.profit >= 0 ? '+' : ''}${profitPct!.toFixed(2)}%)`}
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
             </div>
             <SellModal
                 visible={!!sellHolding}

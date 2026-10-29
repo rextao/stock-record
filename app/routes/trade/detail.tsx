@@ -6,8 +6,8 @@ import { deleteTrade, fetchTradeDetail, sellTrade } from "../../api/trading";
 import { SellModal } from "../../features/trade-record/components/SellModal";
 import styles from "./detail.module.less";
 
-const formatPrice = (val: number) => val?.toFixed(2);
-const formatPct = (val: number) => `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
+const formatPrice = (val: number | null) => val == null ? '-' : val.toFixed(2);
+const formatPct = (val: number | null) => val == null ? '-' : `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
 
 type Tone = 'default' | 'up' | 'down';
 
@@ -117,7 +117,7 @@ export default function TradeDetailRoute() {
                 <div className={styles.card}>
                     <div className={styles.cardTitle}>收益分析</div>
                     <InfoRow label="预期涨幅" value={formatPct(trade.upside_pct)} tone="up" />
-                    <InfoRow label="预期跌幅" value={formatPct(-trade.downside_pct)} tone="down" />
+                    <InfoRow label="预期跌幅" value={formatPct(trade.downside_pct == null ? null : -trade.downside_pct)} tone="down" />
                     {trade.actual_return_pct !== null && (
                         <InfoRow
                             label="实际收益"

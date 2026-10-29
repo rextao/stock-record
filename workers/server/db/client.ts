@@ -13,8 +13,10 @@ import type {
 
 // 你可以把这些纯计算函数放到 app/common/utils/calculations.ts 中
 // 这里为了示例完整性暂时保留简单的 mock
-const calcUpsidePct = (curr: number, target: number) => ((target - curr) / curr) * 100;
-const calcDownsidePct = (curr: number, stop: number) => ((curr - stop) / curr) * 100;
+const calcUpsidePct = (curr: number, target: number | null) =>
+    target == null || curr === 0 ? null : ((target - curr) / curr) * 100;
+const calcDownsidePct = (curr: number, stop: number | null) =>
+    stop == null || curr === 0 ? null : ((curr - stop) / curr) * 100;
 
 export class TradingDB {
     constructor(private db: D1Database) {}
@@ -69,8 +71,12 @@ export class TradingDB {
                         (SELECT sr.sell_quantity FROM sell_records sr JOIN trades t2 ON sr.trade_id = t2.id
                           WHERE t2.item_id = i.id ORDER BY sr.sell_time DESC, sr.id DESC LIMIT 1) AS last_sell_quantity,
                         (SELECT sr.sell_time  FROM sell_records sr JOIN trades t2 ON sr.trade_id = t2.id
-                          WHERE t2.item_id = i.id ORDER BY sr.sell_time DESC, sr.id DESC LIMIT 1) AS last_sell_time
-                 FROM items i
+                          WHERE t2.item_id = i.id ORDER BY sr.sell_time DESC, sr.id DESC LIMIT 1) AS last_sell_time,
+                        (SELECT t3.target_price FROM trades t3
+                          WHERE t3.item_id = i.id ORDER BY t3.buy_time DESC, t3.id DESC LIMIT 1) AS last_target_price
+                        ,(SELECT t4.stop_loss_price FROM trades t4
+                          WHERE t4.item_id = i.id ORDER BY t4.buy_time DESC, t4.id DESC LIMIT 1) AS last_stop_loss_price
+                  FROM items i
                  ORDER BY i.created_at DESC`,
             )
             .all<ItemWithUsage>();
@@ -156,7 +162,7 @@ export class TradingDB {
         await this.db.batch(stmts);
     }
     // ============== Trades ==============
-    async createTrade(data: { item_id: number; current_price: number; target_price: number; stop_loss_price: number; buy_quantity: number; notes?: string }): Promise<number> {
+    async createTrade(data: { item_id: number; current_price: number; target_price: number | null; stop_loss_price: number | null; buy_quantity: number; notes?: string }): Promise<number> {
         const now = this.nowUtcTime();
         const { results } = await this.db
             .prepare(

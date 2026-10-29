@@ -81,6 +81,77 @@
     margin-top: @gap-xl;
 }
 
+.emptyRecords {
+    padding: @gap-lg;
+    border: 1px solid var(--border);
+    border-radius: @radius-xl;
+    background-color: var(--card-bg);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.transactionCard {
+    padding: @gap-lg;
+    margin-bottom: @gap-md;
+    border: 1px solid var(--border);
+    border-radius: @radius-xl;
+    background-color: var(--card-bg);
+}
+
+.transactionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: @gap-md;
+}
+
+.transactionQuantity {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.transactionGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: @gap-md;
+}
+
+.transactionSide {
+    display: flex;
+    flex-direction: column;
+    gap: @gap-xs;
+    min-width: 0;
+}
+
+.transactionLabel {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.transactionTime {
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.transactionPrice {
+    color: var(--text-primary);
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+}
+
+.transactionProfit {
+    padding-top: @gap-md;
+    margin-top: @gap-md;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
 .tradeCard {
     background-color: var(--card-bg);
     border: 1px solid var(--border);

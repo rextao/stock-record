@@ -41,6 +41,10 @@ async function readPayload(request: Request): Promise<Record<string, unknown>> {
 
 const num = (value: unknown) => Number(value);
 const str = (value: unknown) => (value == null ? "" : String(value));
+const optionalNum = (value: unknown): number | null => {
+	if (value == null || str(value).trim() === "") return null;
+	return Number(value);
+};
 
 // 成交时刻：日期必填，后面的时分秒可选（走势页改日期时会把原时分秒一起带回来）
 const TIME_PATTERN = /^\d{4}-\d{2}-\d{2}([ T].*)?$/;
@@ -138,11 +142,17 @@ async function handleApi(request: Request, env: AppEnv, pathname: string): Promi
 			const body = await readPayload(request);
 			const item_id = num(body.itemId);
 			const current_price = num(body.currentPrice);
-			const target_price = num(body.targetPrice);
-			const stop_loss_price = num(body.stopLossPrice);
+			const target_price = optionalNum(body.targetPrice);
+			const stop_loss_price = optionalNum(body.stopLossPrice);
 			const buy_quantity = num(body.buyQuantity);
-			if (!item_id || !current_price || !target_price || !stop_loss_price || !buy_quantity) {
+			if (!item_id || !current_price || !buy_quantity) {
 				return fail("核心数据不完整");
+			}
+			if (
+				(target_price !== null && (!Number.isFinite(target_price) || target_price <= 0)) ||
+				(stop_loss_price !== null && (!Number.isFinite(stop_loss_price) || stop_loss_price <= 0))
+			) {
+				return fail("预期买入价和止损价必须为正数");
 			}
 			const id = await db.createTrade({
 				item_id,
