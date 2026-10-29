@@ -112,6 +112,11 @@ export default function DecisionRoute() {
                                         : '--'}
                                 </span>
                             </div>
+                            {daily && !daily.insufficient && daily.peakDate && (
+                                <div className={styles.calcBase}>
+                                    起算 {daily.peakDate} · {daily.peakPrice?.toFixed(2)}
+                                </div>
+                            )}
                             <div className={styles.levelList}>
                                 {decisions.map((decision) => <LevelRow key={decision.level} decision={decision} />)}
                             </div>

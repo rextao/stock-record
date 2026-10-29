@@ -16,6 +16,7 @@ export type AdjustmentDecision = {
     passedByDuration: boolean
     passed: boolean
     peakDate: string | null
+    peakPrice: number | null
     insufficient: boolean
 }
 
@@ -94,6 +95,7 @@ export function evaluateAdjustment(candles: PriceCandle[], level: DecisionLevel)
         passedByDuration: false,
         passed: false,
         peakDate: null,
+        peakPrice: null,
         insufficient: true,
     })
 
@@ -122,6 +124,7 @@ export function evaluateAdjustment(candles: PriceCandle[], level: DecisionLevel)
         passedByDuration,
         passed: passedByDrawdown || passedByDuration,
         peakDate: peak.highDate,
+        peakPrice: peak.high,
         insufficient: false,
     }
 }
