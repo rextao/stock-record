@@ -119,6 +119,27 @@
     color: var(--text-on-accent);
 }
 
+.decisionEntry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: @gap-md;
+    padding: @gap-md @gap-lg;
+    border: 1px solid var(--accent);
+    border-radius: @radius-lg;
+    background-color: var(--accent-soft);
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 14px;
+    text-align: left;
+
+    span {
+        color: var(--text-secondary);
+        font-size: 12px;
+    }
+}
+
 /*
  * 四个价格字段排 2×2。股价不会很长，一项独占一行纯属浪费屏幕。
  *

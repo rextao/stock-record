@@ -338,6 +338,22 @@ export default function NewTradeRoute() {
                         })}
                     </div>
                 )}
+                {selectedItem && selectedSymbol && (
+                    <button
+                        type="button"
+                        className={styles.decisionEntry}
+                        onClick={() => navigate('/trade/decision', {
+                            state: {
+                                itemId: selectedItem.id,
+                                name: selectedItem.name,
+                                symbol: selectedItem.symbol,
+                            },
+                        })}
+                    >
+                        决策分析
+                        <span>查看调整是否到位</span>
+                    </button>
+                )}
 
                 {/* 2. 价格与数量信息 */}
                 <div className={clsx(styles.sectionTitle, styles.sectionTitleSpaced, styles.priceHeader)}>

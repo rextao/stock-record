@@ -1,0 +1,146 @@
+.page {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
+    .safe-area-top();
+}
+
+.navBar {
+    flex-shrink: 0;
+    background-color: var(--app-bg);
+    --border-bottom: 1px solid var(--border);
+}
+
+.content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: @gap-lg;
+    padding-bottom: @page-bottom-action;
+}
+
+.stockHeader {
+    display: flex;
+    align-items: baseline;
+    gap: @gap-sm;
+    margin-bottom: @gap-lg;
+}
+
+.stockName {
+    color: var(--text-primary);
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.stockSymbol {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.ruleCard,
+.decisionCard {
+    margin-bottom: @gap-md;
+    padding: @gap-lg;
+    border: 1px solid var(--border);
+    border-radius: @radius-xl;
+    background-color: var(--card-bg);
+}
+
+.ruleCard h1,
+.decisionCard h2 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.ruleCard h1 {
+    font-size: 18px;
+}
+
+.ruleCard p,
+.cardHint {
+    margin: @gap-sm 0 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.ruleList {
+    display: flex;
+    flex-direction: column;
+    gap: @gap-xs;
+    margin-top: @gap-md;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: @gap-md;
+}
+
+.decisionCard h2 {
+    font-size: 16px;
+}
+
+.passed,
+.notPassed,
+.insufficient {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.passed { color: var(--pnl-up); }
+.notPassed { color: var(--text-secondary); }
+.insufficient { color: var(--text-muted); }
+
+.metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: @gap-sm;
+    margin-top: @gap-md;
+}
+
+.metric,
+.metricPassed {
+    display: flex;
+    flex-direction: column;
+    gap: @gap-xs;
+    padding: @gap-md;
+    border-radius: @radius-lg;
+    background-color: var(--surface-active);
+}
+
+.metricPassed { border: 1px solid var(--pnl-up); }
+.metric span,
+.metricPassed span { color: var(--text-secondary); font-size: 12px; }
+.metric strong,
+.metricPassed strong { color: var(--text-primary); font-size: 18px; font-variant-numeric: tabular-nums; }
+.metric small,
+.metricPassed small { color: var(--text-muted); font-size: 11px; }
+
+.dateRow {
+    display: flex;
+    justify-content: space-between;
+    gap: @gap-sm;
+    margin-top: @gap-md;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.loading,
+.empty {
+    min-height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: @gap-md;
+    color: var(--text-muted);
+    font-size: 14px;
+}

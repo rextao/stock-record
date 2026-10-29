@@ -15,6 +15,7 @@ export default [
 
 
     route("trade/new", "routes/trade/new.tsx"),
+    route("trade/decision", "routes/trade/decision.tsx"),
 
     // 独立小工具：纯本地计算，不依赖任何接口
     route("tools/price-change", "routes/tools/price-change.tsx"),
