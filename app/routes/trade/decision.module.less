@@ -73,7 +73,7 @@
     font-weight: 600;
 }
 
-.passed { color: var(--pnl-up); }
+.passed { color: var(--text-secondary); }
 .notPassed { color: var(--text-secondary); }
 
 .currentAdjustment {
@@ -118,8 +118,10 @@
     font-variant-numeric: tabular-nums;
 }
 
-.checkPassed { color: var(--pnl-up); }
+.checkPassed { color: var(--text-secondary); }
 .checkMissed { color: var(--text-secondary); }
+.checkPassed svg { color: var(--status-success); }
+.checkMissed svg { color: var(--status-danger); }
 .levelInsufficient { grid-column: 2 / 4; color: var(--text-muted); }
 
 .cardHint {
