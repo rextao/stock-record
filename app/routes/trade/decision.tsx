@@ -36,7 +36,7 @@ function LevelRow({ decision }: { decision: AdjustmentDecision }) {
                 <>
                     <span className={decision.passedByDrawdown ? styles.checkPassed : styles.checkMissed}>
                         {decision.passedByDrawdown ? <Check size={14} strokeWidth={3} /> : <X size={14} strokeWidth={3} />}
-                        {formatPercent(decision.drawdown)}
+                        {`${decision.drawdownThreshold}%`}
                     </span>
                     <span className={decision.passedByDuration ? styles.checkPassed : styles.checkMissed}>
                         {decision.passedByDuration ? <Check size={14} strokeWidth={3} /> : <X size={14} strokeWidth={3} />}
