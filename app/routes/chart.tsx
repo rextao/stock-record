@@ -388,11 +388,11 @@ export default function ChartRoute() {
                                         className={styles.rankRow}
                                         role="button"
                                         tabIndex={0}
-                                        onClick={() => navigate(`/holdings/${row.id}`)}
+                                        onClick={() => navigate(`/holdings/${row.id}`, { state: { from: '/chart' } })}
                                         onKeyDown={(event) => {
                                             if (event.key === 'Enter' || event.key === ' ') {
                                                 event.preventDefault();
-                                                navigate(`/holdings/${row.id}`);
+                                                navigate(`/holdings/${row.id}`, { state: { from: '/chart' } });
                                             }
                                         }}
                                     >

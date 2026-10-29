@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLoaderData, useNavigate, useFetcher } from "react-router";
+import { useLoaderData, useNavigate, useFetcher, useLocation } from "react-router";
 import { NavBar } from "antd-mobile";
 import clsx from "clsx";
 import { SellModal } from "../../features/trade-record/components/SellModal";
@@ -37,10 +37,12 @@ export async function clientAction({ request }: { request: Request }) {
 export default function HoldingsDetailRoute() {
     const { holding, openTrades, closedTrades } = useLoaderData<typeof clientLoader>();
     const navigate = useNavigate();
+    const location = useLocation();
+    const fromChart = (location.state as { from?: string } | null)?.from === '/chart';
     const [sellHolding, setSellHolding] = useState<any>(null);
     const fetcher = useFetcher();
 
-    const transactionRecords = [...openTrades, ...closedTrades]
+    const allTransactionRecords = [...openTrades, ...closedTrades]
         .flatMap((trade: any) => {
             const soldRecords = (trade.sell_records || []).map((record: any) => ({
                 id: `sell-${record.id}`,
@@ -66,11 +68,14 @@ export default function HoldingsDetailRoute() {
             ];
         })
         .sort((a: any, b: any) => b.buyTime.localeCompare(a.buyTime) || b.id.localeCompare(a.id));
+    const transactionRecords = fromChart
+        ? allTransactionRecords.filter((record: any) => record.sellTime != null)
+        : allTransactionRecords;
 
     return (
         <div className={styles.page}>
             {/* 入口只有首页的持仓卡片，直接回首页，冷启动落在这个页面时也有确定的去处 */}
-            <NavBar onBack={() => navigate("/", { replace: true })} className={styles.navBar}>
+            <NavBar onBack={() => fromChart ? navigate('/chart', { replace: true }) : navigate("/", { replace: true })} className={styles.navBar}>
                 {holding.item_name}
             </NavBar>
 
@@ -79,26 +84,38 @@ export default function HoldingsDetailRoute() {
                 <div className={styles.summaryCard}>
                     <div className={styles.summaryHeader}>
                         <span className={styles.itemName}>{holding.item_name}</span>
-                        {holding.remaining_qty > 0 && (
+                        {!fromChart && holding.remaining_qty > 0 && (
                             <div onClick={() => setSellHolding(holding)} className={styles.sellEntry}>
                                 记录卖出
                             </div>
                         )}
                     </div>
                     <div className={styles.summaryStats}>
-                        <div>
-                            <div className={styles.statLabel}>剩余持仓</div>
-                            <div className={styles.statValue}>{holding.remaining_qty}</div>
-                        </div>
-                        <div>
-                            <div className={styles.statLabel}>加权均价</div>
-                            <div className={styles.statValue}>{formatPrice(holding.weighted_avg_price)}</div>
-                        </div>
-                        <div>
-                            <div className={styles.statLabel}>累计盈亏</div>
+                        {!fromChart && <>
+                            <div>
+                                <div className={styles.statLabel}>剩余持仓</div>
+                                <div className={styles.statValue}>{holding.remaining_qty}</div>
+                            </div>
+                            <div>
+                                <div className={styles.statLabel}>加权均价</div>
+                                <div className={styles.statValue}>{formatPrice(holding.weighted_avg_price)}</div>
+                            </div>
+                        </>}
+                        {fromChart && <div>
+                            <div className={styles.statLabel}>已平仓收益</div>
                             <div className={clsx(styles.statValue, pnlClass(holding.realized_pnl))}>
                                 {holding.realized_pnl >= 0 ? '+' : ''}{holding.realized_pnl.toFixed(2)}
                             </div>
+                        </div>}
+                        <div>
+                            <div className={styles.statLabel}>{fromChart ? '已平仓笔数' : '累计盈亏'}</div>
+                            {fromChart ? (
+                                <div className={styles.statValue}>{transactionRecords.length}</div>
+                            ) : (
+                                <div className={clsx(styles.statValue, pnlClass(holding.realized_pnl))}>
+                                    {holding.realized_pnl >= 0 ? '+' : ''}{holding.realized_pnl.toFixed(2)}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
