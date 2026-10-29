@@ -18,7 +18,6 @@
     min-height: 0;
     overflow-y: auto;
     padding: @gap-lg;
-    padding-bottom: @page-bottom-action;
 }
 
 .stockHeader {
@@ -40,31 +39,117 @@
     font-variant-numeric: tabular-nums;
 }
 
-.ruleCard,
 .decisionCard {
-    margin-bottom: @gap-md;
     padding: @gap-lg;
     border: 1px solid var(--border);
     border-radius: @radius-xl;
     background-color: var(--card-bg);
 }
 
-.ruleCard h1,
+.cardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: @gap-md;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: @gap-sm;
+    min-width: 0;
+}
+
 .decisionCard h2 {
     margin: 0;
+    font-size: 16px;
     color: var(--text-primary);
 }
 
-.ruleCard h1 {
-    font-size: 18px;
+.passed,
+.notPassed {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 600;
 }
 
-.ruleCard p,
-.cardHint {
-    margin: @gap-sm 0 0;
+.passed { color: var(--pnl-up); }
+.notPassed { color: var(--text-secondary); }
+
+.currentAdjustment {
+    flex-shrink: 0;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.levelList {
+    display: flex;
+    flex-direction: column;
+    margin-top: @gap-md;
+}
+
+.levelRow {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    align-items: center;
+    gap: @gap-md;
+    padding: @gap-sm 0;
+
+    & + & {
+        border-top: 1px solid var(--border);
+    }
+}
+
+.levelLabel {
     color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.checkPassed,
+.checkMissed,
+.levelInsufficient {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
     font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.checkPassed { color: var(--pnl-up); }
+.checkMissed { color: var(--text-secondary); }
+.levelInsufficient { grid-column: 2 / 4; color: var(--text-muted); }
+
+.cardHint {
+    margin: @gap-md 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
     line-height: 1.5;
+}
+
+.rulesBody {
+    padding: @gap-lg;
+    padding-bottom: calc(@gap-lg + @safe-bottom);
+    border-radius: @radius-xl @radius-xl 0 0;
+    background-color: var(--card-bg);
+}
+
+.rulesHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.rulesHeader h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+.rulesClose {
+    color: var(--text-muted);
 }
 
 .ruleList {
@@ -77,61 +162,11 @@
     line-height: 1.5;
 }
 
-.cardHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: @gap-md;
-}
-
-.decisionCard h2 {
-    font-size: 16px;
-}
-
-.passed,
-.notPassed,
-.insufficient {
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.passed { color: var(--pnl-up); }
-.notPassed { color: var(--text-secondary); }
-.insufficient { color: var(--text-muted); }
-
-.metrics {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: @gap-sm;
-    margin-top: @gap-md;
-}
-
-.metric,
-.metricPassed {
-    display: flex;
-    flex-direction: column;
-    gap: @gap-xs;
-    padding: @gap-md;
-    border-radius: @radius-lg;
-    background-color: var(--surface-active);
-}
-
-.metricPassed { border: 1px solid var(--pnl-up); }
-.metric span,
-.metricPassed span { color: var(--text-secondary); font-size: 12px; }
-.metric strong,
-.metricPassed strong { color: var(--text-primary); font-size: 18px; font-variant-numeric: tabular-nums; }
-.metric small,
-.metricPassed small { color: var(--text-muted); font-size: 11px; }
-
-.dateRow {
-    display: flex;
-    justify-content: space-between;
-    gap: @gap-sm;
-    margin-top: @gap-md;
+.rulesHint {
+    margin: @gap-md 0 0;
     color: var(--text-muted);
     font-size: 12px;
-    font-variant-numeric: tabular-nums;
+    line-height: 1.5;
 }
 
 .loading,

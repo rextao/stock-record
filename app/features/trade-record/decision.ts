@@ -2,6 +2,7 @@ import type { PriceCandle } from '../stock-chart/types'
 
 export type DecisionLevel = '日线' | '周线' | '月线'
 
+/** 「当前这轮调整」= 窗口内最高点 → 最新收盘价 / 最新交易日，不回看历史最低点 */
 export type AdjustmentDecision = {
     level: DecisionLevel
     drawdown: number | null
@@ -15,16 +16,14 @@ export type AdjustmentDecision = {
     passedByDuration: boolean
     passed: boolean
     peakDate: string | null
-    troughDate: string | null
     insufficient: boolean
 }
 
 type PeriodPoint = {
     date: string
+    close: number
     high: number
-    low: number
     highDate: string
-    lowDate: string
 }
 
 const parseDate = (date: string) => Date.parse(`${date}T00:00:00Z`)
@@ -41,24 +40,19 @@ function monthIndex(date: string): number {
 function pointFromCandle(candle: PriceCandle): PeriodPoint {
     return {
         date: candle.date,
+        close: candle.close,
         high: candle.h ?? candle.close,
-        low: candle.l ?? candle.close,
         highDate: candle.date,
-        lowDate: candle.date,
     }
 }
 
 function mergePoint(target: PeriodPoint, candle: PriceCandle): void {
     const high = candle.h ?? candle.close
-    const low = candle.l ?? candle.close
     if (high >= target.high) {
         target.high = high
         target.highDate = candle.date
     }
-    if (low <= target.low) {
-        target.low = low
-        target.lowDate = candle.date
-    }
+    target.close = candle.close
     target.date = candle.date
 }
 
@@ -83,65 +77,51 @@ function aggregate(candles: PriceCandle[], level: DecisionLevel): PeriodPoint[] 
     return [...groups.values()].sort((a, b) => a.date.localeCompare(b.date))
 }
 
-function findLargestAdjustment(points: PeriodPoint[]): { peak: PeriodPoint; trough: PeriodPoint } | null {
-    if (points.length < 2) return null
-
-    let best: { peak: PeriodPoint; trough: PeriodPoint; drawdown: number } | null = null
-    for (let peakIndex = 0; peakIndex < points.length - 1; peakIndex += 1) {
-        const peak = points[peakIndex]
-        let trough = points[peakIndex + 1]
-        for (let troughIndex = peakIndex + 2; troughIndex < points.length; troughIndex += 1) {
-            if (points[troughIndex].low < trough.low) trough = points[troughIndex]
-        }
-        if (peak.high <= 0) continue
-        const drawdown = ((peak.high - trough.low) / peak.high) * 100
-        if (!best || drawdown > best.drawdown) best = { peak, trough, drawdown }
-    }
-    return best ? { peak: best.peak, trough: best.trough } : null
-}
-
 export function evaluateAdjustment(candles: PriceCandle[], level: DecisionLevel): AdjustmentDecision {
     const config = {
         日线: { drawdownThreshold: 5, durationThreshold: 14, durationUnit: '天' as const, durationLabel: '2周' },
         周线: { drawdownThreshold: 10, durationThreshold: 28, durationUnit: '周' as const, durationLabel: '4周' },
         月线: { drawdownThreshold: 15, durationThreshold: 4, durationUnit: '月' as const, durationLabel: '4个月' },
     }[level]
-    const adjustment = findLargestAdjustment(aggregate(candles, level))
 
-    if (!adjustment) {
-        return {
-            level,
-            drawdown: null,
-            durationDays: null,
-            durationMonths: null,
-            ...config,
-            passedByDrawdown: false,
-            passedByDuration: false,
-            passed: false,
-            peakDate: null,
-            troughDate: null,
-            insufficient: true,
-        }
-    }
+    const fail = (): AdjustmentDecision => ({
+        level,
+        drawdown: null,
+        durationDays: null,
+        durationMonths: null,
+        ...config,
+        passedByDrawdown: false,
+        passedByDuration: false,
+        passed: false,
+        peakDate: null,
+        insufficient: true,
+    })
 
-    const durationDays = dayDifference(adjustment.peak.highDate, adjustment.trough.lowDate)
-    const durationMonths = Math.max(0, monthIndex(adjustment.trough.lowDate) - monthIndex(adjustment.peak.highDate))
-    const passedByDrawdown = ((adjustment.peak.high - adjustment.trough.low) / adjustment.peak.high) * 100 >= config.drawdownThreshold
+    const points = aggregate(candles, level)
+    if (points.length < 2) return fail()
+
+    const peak = points.reduce((best, point) => (point.high > best.high ? point : best))
+    const latest = points[points.length - 1]
+    if (peak.high <= 0) return fail()
+
+    const drawdown = ((peak.high - latest.close) / peak.high) * 100
+    const durationDays = dayDifference(peak.highDate, latest.date)
+    const durationMonths = Math.max(0, monthIndex(latest.date) - monthIndex(peak.highDate))
+    const passedByDrawdown = drawdown >= config.drawdownThreshold
     const passedByDuration = config.durationUnit === '月'
         ? durationMonths >= config.durationThreshold
         : durationDays >= config.durationThreshold
 
     return {
         level,
-        drawdown: ((adjustment.peak.high - adjustment.trough.low) / adjustment.peak.high) * 100,
+        drawdown,
         durationDays,
         durationMonths,
         ...config,
         passedByDrawdown,
         passedByDuration,
         passed: passedByDrawdown || passedByDuration,
-        peakDate: adjustment.peak.highDate,
-        troughDate: adjustment.trough.lowDate,
+        peakDate: peak.highDate,
         insufficient: false,
     }
 }

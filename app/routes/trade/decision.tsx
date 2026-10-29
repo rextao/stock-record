@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NavBar, SpinLoading, Toast } from 'antd-mobile'
+import { NavBar, Popup, SpinLoading, Toast } from 'antd-mobile'
+import { CircleCheck, CircleX } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import type { PriceCandle, PriceHistory } from '../../features/stock-chart/types'
 import { fetchPriceHistory } from '../../api/trading'
@@ -18,10 +19,6 @@ function formatPercent(value: number | null): string {
     return value == null ? '-' : `${value.toFixed(1)}%`
 }
 
-function formatDate(value: string | null): string {
-    return value ? value.slice(5) : '-'
-}
-
 function formatDuration(decision: AdjustmentDecision): string {
     if (decision.durationDays == null) return '-'
     if (decision.durationUnit === '月') return `${decision.durationMonths}个月`
@@ -29,45 +26,25 @@ function formatDuration(decision: AdjustmentDecision): string {
     return `${decision.durationDays}天`
 }
 
-function DecisionCard({ decision }: { decision: AdjustmentDecision }) {
-    if (decision.insufficient) {
-        return (
-            <section className={styles.decisionCard}>
-                <div className={styles.cardHeader}>
-                    <h2>{decision.level}级别</h2>
-                    <span className={styles.insufficient}>数据不足</span>
-                </div>
-                <p className={styles.cardHint}>历史数据不足以判断最高点到最低点的调整。</p>
-            </section>
-        )
-    }
-
+function LevelRow({ decision }: { decision: AdjustmentDecision }) {
     return (
-        <section className={styles.decisionCard}>
-            <div className={styles.cardHeader}>
-                <h2>{decision.level}级别</h2>
-                <span className={decision.passed ? styles.passed : styles.notPassed}>
-                    {decision.passed ? '调整到位' : '调整未到位'}
-                </span>
-            </div>
-            <div className={styles.metrics}>
-                <div className={decision.passedByDrawdown ? styles.metricPassed : styles.metric}>
-                    <span>调整幅度</span>
-                    <strong>{formatPercent(decision.drawdown)}</strong>
-                    <small>标准：≥ {decision.drawdownThreshold}%</small>
-                </div>
-                <div className={decision.passedByDuration ? styles.metricPassed : styles.metric}>
-                    <span>调整时间</span>
-                    <strong>{formatDuration(decision)}</strong>
-                    <small>标准：≥ {decision.durationLabel}</small>
-                </div>
-            </div>
-            <div className={styles.dateRow}>
-                <span>最高点 {formatDate(decision.peakDate)}</span>
-                <span>最低点 {formatDate(decision.troughDate)}</span>
-            </div>
-            <p className={styles.cardHint}>满足调整幅度或调整时间任一条件，即判断为调整到位。</p>
-        </section>
+        <div className={styles.levelRow}>
+            <span className={styles.levelLabel}>{decision.level}</span>
+            {decision.insufficient ? (
+                <span className={styles.levelInsufficient}>数据不足</span>
+            ) : (
+                <>
+                    <span className={decision.passedByDrawdown ? styles.checkPassed : styles.checkMissed}>
+                        {decision.passedByDrawdown ? <CircleCheck size={14} /> : <CircleX size={14} />}
+                        {formatPercent(decision.drawdown)}
+                    </span>
+                    <span className={decision.passedByDuration ? styles.checkPassed : styles.checkMissed}>
+                        {decision.passedByDuration ? <CircleCheck size={14} /> : <CircleX size={14} />}
+                        {formatDuration(decision)}
+                    </span>
+                </>
+            )}
+        </div>
     )
 }
 
@@ -79,6 +56,7 @@ export default function DecisionRoute() {
     const [history, setHistory] = useState<PriceHistory | null>(null)
     const [loading, setLoading] = useState(Boolean(symbol))
     const [error, setError] = useState<string | null>(null)
+    const [rulesVisible, setRulesVisible] = useState(false)
 
     useEffect(() => {
         if (!symbol) return
@@ -105,6 +83,9 @@ export default function DecisionRoute() {
         if (error) Toast.show(error)
     }, [error])
 
+    const overallPassed = decisions.some((decision) => decision.passed)
+    const daily = decisions[0]
+
     return (
         <div className={styles.page}>
             <NavBar onBack={() => navigate(-1)} className={styles.navBar}>
@@ -122,16 +103,46 @@ export default function DecisionRoute() {
                     <div className={styles.loading}><SpinLoading color="currentColor" />加载历史行情</div>
                 ) : history ? (
                     <>
-                        <section className={styles.ruleCard}>
-                            <h1>调整是否到位</h1>
-                            <p>幅度和时间满足任一条件，即认为该级别调整到位。</p>
-                            <div className={styles.ruleList}>
-                                <span>日线：下跌 ≥ 5% 或持续 ≥ 2周</span>
-                                <span>周线：下跌 ≥ 10% 或持续 ≥ 4周</span>
-                                <span>月线：下跌 ≥ 15% 或持续 ≥ 4个月</span>
+                        <section className={styles.decisionCard} onClick={() => setRulesVisible(true)}>
+                            <div className={styles.cardHeader}>
+                                <div className={styles.headerLeft}>
+                                    <h2>是否调整到位</h2>
+                                    <span className={overallPassed ? styles.passed : styles.notPassed}>
+                                        {overallPassed ? '调整到位' : '调整未到位'}
+                                    </span>
+                                </div>
+                                <span className={styles.currentAdjustment}>
+                                    {daily && !daily.insufficient
+                                        ? `${formatPercent(daily.drawdown)} · ${formatDuration(daily)}`
+                                        : '--'}
+                                </span>
                             </div>
+                            <div className={styles.levelList}>
+                                {decisions.map((decision) => <LevelRow key={decision.level} decision={decision} />)}
+                            </div>
+                            <p className={styles.cardHint}>满足幅度或时长任一条件即调整到位，点击查看规则</p>
                         </section>
-                        {decisions.map((decision) => <DecisionCard key={decision.level} decision={decision} />)}
+                        {rulesVisible && (
+                            <Popup
+                                visible
+                                bodyClassName={styles.rulesBody}
+                                onMaskClick={() => setRulesVisible(false)}
+                            >
+                                <div className={styles.rulesHeader}>
+                                    <h3>判定规则</h3>
+                                    <CircleX size={20} className={styles.rulesClose} onClick={() => setRulesVisible(false)} />
+                                </div>
+                                <div className={styles.ruleList}>
+                                    <span>日线：下跌 ≥ 5% 或持续 ≥ 2周（14天）</span>
+                                    <span>周线：下跌 ≥ 10% 或持续 ≥ 4周（28天）</span>
+                                    <span>月线：下跌 ≥ 15% 或持续 ≥ 4个月</span>
+                                </div>
+                                <p className={styles.rulesHint}>
+                                    每个级别分别比较：窗口内最高点到最新收盘价的下跌幅度，以及距最高点的持续时长。
+                                    幅度或时长满足任一阈值，该级别即判定为调整到位。
+                                </p>
+                            </Popup>
+                        )}
                     </>
                 ) : (
                     <div className={styles.empty}>暂时无法获取历史行情</div>
