@@ -4,7 +4,7 @@ import { NavBar } from "antd-mobile";
 import clsx from "clsx";
 import { SellModal } from "../../features/trade-record/components/SellModal";
 import { fetchHoldingDetail, sellByItem } from "../../api/trading";
-import { formatLocalDateTime } from "../../utils/datetime";
+import { formatLocalDateTime, formatLocalShort } from "../../utils/datetime";
 import styles from "./detail.module.less";
 
 // 简单的日期和价格格式化
@@ -125,6 +125,31 @@ export default function HoldingsDetailRoute() {
                     <div className={styles.emptyRecords}>暂无交易记录</div>
                 ) : (
                     transactionRecords.map((record: any) => {
+                        if (fromChart) {
+                            // 盈亏排行入口的紧凑行：收益在最前，买卖两栏价格在上、时间在下，
+                            // 时间用 MM-DD HH:mm 短格式，保证 320px 小屏也放得下
+                            return (
+                                <div key={record.id} className={styles.compactRecord}>
+                                    <span className={clsx(styles.compactProfit, pnlClass(record.profit))}>
+                                        {record.profit >= 0 ? '+' : ''}{record.profit.toFixed(2)}
+                                    </span>
+                                    <div className={styles.compactSide}>
+                                        <span className={styles.compactPrice}>
+                                            <span className={styles.compactLabel}>买</span>
+                                            {formatPrice(record.buyPrice)}
+                                        </span>
+                                        <span className={styles.compactTime}>{formatLocalShort(record.buyTime)}</span>
+                                    </div>
+                                    <div className={styles.compactSide}>
+                                        <span className={styles.compactPrice}>
+                                            <span className={styles.compactLabel}>卖</span>
+                                            {formatPrice(record.sellPrice)}
+                                        </span>
+                                        <span className={styles.compactTime}>{formatLocalShort(record.sellTime)}</span>
+                                    </div>
+                                </div>
+                            );
+                        }
                         const profitPct = record.sellPrice != null && record.buyPrice > 0
                             ? ((record.sellPrice - record.buyPrice) / record.buyPrice) * 100
                             : null;
