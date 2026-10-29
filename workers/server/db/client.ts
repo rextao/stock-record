@@ -223,11 +223,20 @@ export class TradingDB {
         if (!price || price <= 0) throw new Error('无效的卖出价格');
         if (!qty || qty <= 0) throw new Error('无效的卖出数量');
 
-        // 1. 获取该标的下的所有未平仓交易 (按 buy_time DESC 排序，复刻你原有的逻辑)
+        // 1. 获取该标的下的所有未平仓交易。
+        // 先取最近的记录，再按卖出价动态排序：盈利仓位优先，同一组内按买入时间从近到远。
         const { results: openTrades } = await this.db
-            .prepare('SELECT * FROM trades WHERE item_id = ? AND sold_quantity < buy_quantity ORDER BY buy_time DESC')
+            .prepare('SELECT * FROM trades WHERE item_id = ? AND sold_quantity < buy_quantity ORDER BY buy_time DESC, id DESC')
             .bind(itemId)
             .all<Trade>();
+
+        openTrades.sort((a, b) => {
+            const aPriority = a.current_price < price ? 0 : 1;
+            const bPriority = b.current_price < price ? 0 : 1;
+            if (aPriority !== bPriority) return aPriority - bPriority;
+            const byBuyTime = b.buy_time.localeCompare(a.buy_time);
+            return byBuyTime || b.id - a.id;
+        });
 
         // 2. 校验总仓位是否足够
         const totalRemaining = openTrades.reduce((sum, t) => sum + (t.buy_quantity - t.sold_quantity), 0);

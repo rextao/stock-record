@@ -63,13 +63,18 @@ export interface SellLotPreview {
   profit: number
 }
 
-/** 与 recordSellByItem 相同：按买入时间从新到旧扣减仓位 */
+/** 与 recordSellByItem 相同：盈利仓位优先，同组内按买入时间从新到旧扣减仓位 */
 export function previewSellLots(
   lots: { id: number; buy_time: string; current_price: number; remaining: number }[],
   sellQty: number,
   sellPrice: number
 ): { lots: SellLotPreview[]; totalProfit: number } {
-  const ordered = [...lots].sort((a, b) => b.buy_time.localeCompare(a.buy_time))
+  const ordered = [...lots].sort((a, b) => {
+    const aPriority = a.current_price < sellPrice ? 0 : 1
+    const bPriority = b.current_price < sellPrice ? 0 : 1
+    if (aPriority !== bPriority) return aPriority - bPriority
+    return b.buy_time.localeCompare(a.buy_time) || b.id - a.id
+  })
   let remaining = sellQty
   const result: SellLotPreview[] = []
   for (const t of ordered) {
