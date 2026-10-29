@@ -88,12 +88,11 @@ export default function DecisionRoute() {
     return (
         <div className={styles.page}>
             <NavBar onBack={() => navigate(-1)} className={styles.navBar}>
-                决策分析
+                {symbol ? `决策分析 · ${symbol}` : '决策分析'}
             </NavBar>
             <main className={styles.content}>
                 <section className={styles.stockHeader}>
                     <span className={styles.stockName}>{state?.name || symbol || '未选择股票'}</span>
-                    {symbol && <span className={styles.stockSymbol}>{symbol}</span>}
                 </section>
 
                 {!symbol ? (
@@ -116,7 +115,6 @@ export default function DecisionRoute() {
                             <div className={styles.levelList}>
                                 {decisions.map((decision) => <LevelRow key={decision.level} decision={decision} />)}
                             </div>
-                            <p className={styles.cardHint}>满足幅度或时长任一条件即调整到位，点击查看规则</p>
                         </section>
                         {rulesVisible && (
                             <Popup
@@ -133,10 +131,6 @@ export default function DecisionRoute() {
                                     <span>周线：下跌 ≥ 10% 或持续 ≥ 4周（28天）</span>
                                     <span>月线：下跌 ≥ 15% 或持续 ≥ 4个月</span>
                                 </div>
-                                <p className={styles.rulesHint}>
-                                    每个级别分别比较：窗口内最高点到最新收盘价的下跌幅度，以及距最高点的持续时长。
-                                    幅度或时长满足任一阈值，该级别即判定为调整到位。
-                                </p>
                             </Popup>
                         )}
                     </>
