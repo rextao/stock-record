@@ -128,8 +128,16 @@ export default function DecisionRoute() {
                                 onMaskClick={() => setRulesVisible(false)}
                             >
                                 <div className={styles.rulesHeader}>
-                                    <h3>判定规则</h3>
+                                    <h3>投资建议</h3>
                                     <X size={20} className={styles.rulesClose} onClick={() => setRulesVisible(false)} />
+                                </div>
+                                <div className={styles.ruleList}>
+                                    <span>日线级别：忽略</span>
+                                    <span>周线级别：30% 子弹</span>
+                                    <span>月线级别：50% 子弹</span>
+                                </div>
+                                <div className={`${styles.rulesHeader} ${styles.rulesHeaderSpaced}`}>
+                                    <h3>判定规则</h3>
                                 </div>
                                 <div className={styles.ruleList}>
                                     <span>日线：下跌 ≥ 5% 或持续 ≥ 2周（14天）</span>
