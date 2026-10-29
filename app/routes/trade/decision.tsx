@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavBar, Popup, SpinLoading, Toast } from 'antd-mobile'
-import { CircleCheck, CircleX } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import type { PriceCandle, PriceHistory } from '../../features/stock-chart/types'
 import { fetchPriceHistory } from '../../api/trading'
@@ -35,11 +35,11 @@ function LevelRow({ decision }: { decision: AdjustmentDecision }) {
             ) : (
                 <>
                     <span className={decision.passedByDrawdown ? styles.checkPassed : styles.checkMissed}>
-                        {decision.passedByDrawdown ? <CircleCheck size={14} /> : <CircleX size={14} />}
+                        {decision.passedByDrawdown ? <Check size={14} strokeWidth={3} /> : <X size={14} strokeWidth={3} />}
                         {formatPercent(decision.drawdown)}
                     </span>
                     <span className={decision.passedByDuration ? styles.checkPassed : styles.checkMissed}>
-                        {decision.passedByDuration ? <CircleCheck size={14} /> : <CircleX size={14} />}
+                        {decision.passedByDuration ? <Check size={14} strokeWidth={3} /> : <X size={14} strokeWidth={3} />}
                         {formatDuration(decision)}
                     </span>
                 </>
@@ -124,7 +124,7 @@ export default function DecisionRoute() {
                             >
                                 <div className={styles.rulesHeader}>
                                     <h3>判定规则</h3>
-                                    <CircleX size={20} className={styles.rulesClose} onClick={() => setRulesVisible(false)} />
+                                    <X size={20} className={styles.rulesClose} onClick={() => setRulesVisible(false)} />
                                 </div>
                                 <div className={styles.ruleList}>
                                     <span>日线：下跌 ≥ 5% 或持续 ≥ 2周（14天）</span>
