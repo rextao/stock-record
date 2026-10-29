@@ -40,7 +40,7 @@ function LevelRow({ decision }: { decision: AdjustmentDecision }) {
                     </span>
                     <span className={decision.passedByDuration ? styles.checkPassed : styles.checkMissed}>
                         {decision.passedByDuration ? <Check size={14} strokeWidth={3} /> : <X size={14} strokeWidth={3} />}
-                        {formatDuration(decision)}
+                        {decision.durationLabel}
                     </span>
                 </>
             )}
