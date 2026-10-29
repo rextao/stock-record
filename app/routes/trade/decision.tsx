@@ -83,7 +83,6 @@ export default function DecisionRoute() {
         if (error) Toast.show(error)
     }, [error])
 
-    const overallPassed = decisions.some((decision) => decision.passed)
     const daily = decisions[0]
 
     return (
@@ -106,10 +105,7 @@ export default function DecisionRoute() {
                         <section className={styles.decisionCard} onClick={() => setRulesVisible(true)}>
                             <div className={styles.cardHeader}>
                                 <div className={styles.headerLeft}>
-                                    <h2>是否调整到位</h2>
-                                    <span className={overallPassed ? styles.passed : styles.notPassed}>
-                                        {overallPassed ? '调整到位' : '调整未到位'}
-                                    </span>
+                                    <h2>调整情况</h2>
                                 </div>
                                 <span className={styles.currentAdjustment}>
                                     {daily && !daily.insufficient
