@@ -359,7 +359,11 @@ export default {
 			}
 		}
 
-		// 静态资源命中不会走到这里；剩下的都是 SPA 的前端路由，回退到 index.html
-		return env.ASSETS.fetch(new URL("/index.html", url.origin));
+		// 静态资源命中不会走到这里；剩下的（客户端路由等）回退到 SPA 的 index.html。
+		// 取 "/" 而不是 "/index.html"：静态资源层的 html_handling 会把 / 直接归到
+		// index.html，而显式要 /index.html 在部分环境（如 dev 的 ASSETS 模拟）拿不到，
+		// 会得到 404 空 body、手机浏览器当成文件下载。线上 SPA 导航平时根本到不了
+		// 这里（assets.not_found_handling 已接管），这条只兜非导航的未命中请求
+		return env.ASSETS.fetch(new URL("/", url.origin));
 	},
 };

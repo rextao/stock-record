@@ -15,7 +15,7 @@
 需要 Node >= 24.18.0（本机装在 `~/.nvm/versions/node/v24.18.0/bin`，默认 node 是 20，先 `export PATH=...` 再跑）。
 
 ```bash
-npm run dev      # vite dev server，纯前端，/api 不通；启动时自带打印 Network 局域网地址（vite.config.ts server.host: true）
+npm run dev      # vite dev server（RR 渲染页面）+ workerd 跑 /api，/api 通；启动时自带打印 Network 局域网地址（vite.config.ts server.host: true）
 npm run preview  # build + 打印局域网 IP + wrangler dev（真机/PWA 调试走这个，端口 8788）
 npm run build    # react-router build + scripts/build-sw.mjs 生成 sw.js
 npm run deploy   # build + wrangler deploy
@@ -23,6 +23,8 @@ npx tsc -b --force   # 类型检查，期望 exit 0
 ```
 
 **`npm run typecheck` 是坏的**（调的是不存在的 `typegen` 脚本，真名叫 `cf-typegen`），别用。新增路由后先 `npx react-router typegen`。
+
+**vite 插件顺序按命令分流，不能合并成一种**（`vite.config.ts`）：dev 必须 `reactRouter()` 在 `cloudflare()` 前，否则 cloudflare 的 catch-all 中间件先把文档请求吸进 workerd，返回 404 空 body、手机浏览器当成「下载 document.txt」；build 必须反过来，否则 RR 的 server build 读不到 client manifest 直接构建失败。配套：`wrangler.json` 的 `assets.run_worker_first: ["/api/*"]` 让 /api 在 dev 的 preMiddleware 就派发给 Worker、线上永远 Worker 先行，`not_found_handling: "single-page-application"` 让线上 SPA 导航由静态资源层直接回 index.html。`workers/app.ts` 的 SPA 回退因此取 `/` 而不是 `/index.html`。
 
 ## 目录地图
 

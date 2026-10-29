@@ -7,15 +7,20 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
 	// 监听 0.0.0.0，启动时 Vite 会自带打印 Network 局域网地址，方便手机直连
 	server: {
 		host: true,
 	},
 	plugins: [
-		// SPA 模式下 react-router 不再创建 ssr 环境，Worker 只承载 /api 与静态资源回退
-		cloudflare(),
-		reactRouter(),
+		// 插件顺序按命令分流，两个方向各有各的坑，都不能动：
+		// dev 必须 RR 在前 —— 两家的请求兜底中间件按插件顺序注册，RR 的页面渲染要先于
+		//   cloudflare 的 catch-all，否则文档请求全被吸进 workerd 返回 404 空 body（手机
+		//   浏览器会当成文件下载）；/api 由 wrangler.json 的 assets.run_worker_first 在
+		//   更早的 preMiddleware 直接派发给 Worker，不受影响。
+		// build 必须 cloudflare 在前 —— 它先调度 client 环境构建，RR 的 server build 才能
+		//   读到 dist/client/.vite/manifest.json，反了会直接 ENOENT 构建失败。
+		...(command === "serve" ? [reactRouter(), cloudflare()] : [cloudflare(), reactRouter()]),
 		tsconfigPaths(),
 		// Service Worker 不走 vite 插件：vite-plugin-pwa 会为 SW 起一个 outDir 指向 build/client
 		// 的子构建，在 SPA 构建顺序下它先于客户端产物完成并清空目录。改由 scripts/build-sw.mjs
@@ -43,4 +48,4 @@ export default defineConfig({
 			},
 		},
 	},
-});
+}));
