@@ -83,14 +83,14 @@ export default function HoldingsDetailRoute() {
             <div className={styles.content}>
                 {/* 汇总卡 */}
                 <div className={styles.summaryCard}>
-                    <div className={styles.summaryHeader}>
-                        <span className={styles.itemName}>{holding.item_name}</span>
-                        {!fromChart && holding.remaining_qty > 0 && (
+                    {/* 标的名由顶部 NavBar 展示，卡内不再重复 */}
+                    {!fromChart && holding.remaining_qty > 0 && (
+                        <div className={styles.summaryHeader}>
                             <div onClick={() => setSellHolding(holding)} className={styles.sellEntry}>
                                 记录卖出
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                     <div className={styles.summaryStats}>
                         {!fromChart && <>
                             <div>
